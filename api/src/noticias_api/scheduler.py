@@ -58,12 +58,13 @@ def schedule_pipeline_in_task(trigger: str, settings: Settings) -> asyncio.Task:
 
 def setup_scheduler(settings: Settings) -> AsyncIOScheduler:
     scheduler = AsyncIOScheduler(timezone="America/Argentina/Buenos_Aires")
-    scheduler.add_job(
-        lambda: asyncio.create_task(_run_locked("cron", settings)),
-        CronTrigger(hour=settings.cron_hour, minute=settings.cron_minute),
-        id="daily_briefing",
-        replace_existing=True,
-    )
+    for hour in settings.cron_hours_list:
+        scheduler.add_job(
+            lambda h=hour: asyncio.create_task(_run_locked("cron", settings)),
+            CronTrigger(hour=hour, minute=settings.cron_minute),
+            id=f"daily_briefing_{hour:02d}",
+            replace_existing=True,
+        )
     return scheduler
 
 

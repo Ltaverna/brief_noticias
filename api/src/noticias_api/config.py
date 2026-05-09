@@ -12,6 +12,22 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     cron_hour: int = 7
     cron_minute: int = 0
+    cron_hours: str | None = None  # CSV list e.g. "7,13,20"; overrides cron_hour if set
+
+    @property
+    def cron_hours_list(self) -> list[int]:
+        if self.cron_hours:
+            parts = [p.strip() for p in self.cron_hours.split(",") if p.strip()]
+            out: list[int] = []
+            for p in parts:
+                try:
+                    h = int(p)
+                    if 0 <= h <= 23:
+                        out.append(h)
+                except ValueError:
+                    continue
+            return sorted(set(out)) or [self.cron_hour]
+        return [self.cron_hour]
     top_n_clusters: int = 20
     similarity_threshold: float = 0.70
     cluster_window_hours: int = 48
