@@ -8,6 +8,7 @@ from openai import AsyncOpenAI
 
 from noticias_api.config import Settings
 from noticias_api.db.session import async_session_factory
+from noticias_api.notifiers.alerts import detect_and_send_alerts
 from noticias_api.notifiers.digest import send_digest
 from noticias_api.pipeline.runner import PipelineConfig, run_pipeline
 
@@ -49,6 +50,10 @@ async def _run_locked(trigger: str, settings: Settings) -> int:
                 await send_digest(session, settings, date.today())
             except Exception:
                 logger.exception("digest send failed (non-fatal)")
+            try:
+                await detect_and_send_alerts(session, settings)
+            except Exception:
+                logger.exception("alert detection failed (non-fatal)")
             return run_id
 
 

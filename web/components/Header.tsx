@@ -18,6 +18,7 @@ export function Header() {
             <Link href="/sagas" className="hover:underline">Sagas</Link>
             <Link href="/historial" className="hover:underline">Historial</Link>
             <Link href="/fuentes" className="hover:underline">Fuentes</Link>
+            <Link href="/subscriptions" className="hover:underline">Suscripciones</Link>
           </nav>
         </div>
       </div>

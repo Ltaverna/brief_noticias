@@ -10,6 +10,7 @@ import {
   SagaDetail,
   SearchResults,
   SourceListItem,
+  Subscription,
   ToneTrends,
 } from "./types";
 
@@ -88,6 +89,33 @@ export const api = {
       `/analytics/bias-scorecard${qs.toString() ? `?${qs}` : ""}`,
       { cache: "no-store" },
     );
+  },
+  getSubscriptions: (): Promise<Subscription[]> =>
+    get("/subscriptions", { cache: "no-store" }),
+  addSubscription: async (body: {
+    kind: "entity" | "topic" | "all";
+    value?: string;
+    alert_threshold_sources?: number;
+  }): Promise<Subscription> => {
+    const url =
+      typeof window === "undefined"
+        ? `${baseUrl()}/subscriptions`
+        : "/api/subscriptions";
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`${res.status}`);
+    return res.json();
+  },
+  deleteSubscription: async (id: number): Promise<void> => {
+    const url =
+      typeof window === "undefined"
+        ? `${baseUrl()}/subscriptions/${id}`
+        : `/api/subscriptions/${id}`;
+    const res = await fetch(url, { method: "DELETE" });
+    if (!res.ok) throw new Error(`${res.status}`);
   },
   askQA: async (query: string): Promise<QAResponse> => {
     // Always go through the Next.js proxy at /api/qa so this works from the

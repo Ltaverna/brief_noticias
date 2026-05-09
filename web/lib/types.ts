@@ -183,6 +183,16 @@ export interface QAResponse {
   citations: QACitation[];
 }
 
+export interface Subscription {
+  id: number;
+  channel: string;
+  chat_id: string;
+  kind: "entity" | "topic" | "all";
+  value: string | null;
+  alert_threshold_sources: number | null;
+  created_at: string;
+}
+
 export interface ToneTrends {
   buckets: string[];
   sources: string[];
