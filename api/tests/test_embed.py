@@ -42,7 +42,7 @@ async def test_embed_texts_batches_calls():
     assert len(embeddings) == 3
     assert all(len(e) == 1536 for e in embeddings)
     fake_client.embeddings.create.assert_awaited_once_with(
-        model="text-embedding-3-small", input=["a", "b", "c"]
+        model="text-embedding-3-small", input=["a", "b", "c"], dimensions=1536
     )
 
 

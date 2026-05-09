@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -8,6 +8,7 @@ from openai import AsyncOpenAI
 
 from noticias_api.config import Settings
 from noticias_api.db.session import async_session_factory
+from noticias_api.notifiers.digest import send_digest
 from noticias_api.pipeline.runner import PipelineConfig, run_pipeline
 
 logger = logging.getLogger(__name__)
@@ -38,6 +39,10 @@ async def _run_locked(trigger: str, settings: Settings) -> int:
                 session, cfg, trigger=trigger, openai_client=client
             )
             _current_run_id = run_id
+            try:
+                await send_digest(session, settings, date.today())
+            except Exception:
+                logger.exception("digest send failed (non-fatal)")
             return run_id
 
 

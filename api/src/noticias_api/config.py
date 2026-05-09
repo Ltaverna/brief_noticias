@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     user_agent: str = "noticias-bot/0.1 (+https://github.com/personal/noticias)"
     max_concurrent_fetches: int = 8
 
+    telegram_bot_token: str | None = None
+    telegram_chat_id: str | None = None
+    enable_telegram: bool = False
+    public_base_url: str = "http://localhost:3000"
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

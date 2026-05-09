@@ -29,6 +29,6 @@ def test_settings_has_defaults(monkeypatch: pytest.MonkeyPatch):
 
     assert s.cron_hour == 7
     assert s.cron_minute == 0
-    assert s.top_n_clusters == 15
-    assert s.similarity_threshold == 0.78
+    assert s.top_n_clusters == 20
+    assert s.similarity_threshold == 0.70
     assert s.log_level == "INFO"
