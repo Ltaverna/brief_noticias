@@ -9,10 +9,10 @@ interface Props {
   sourcesById: Map<string, SourceListItem>;
 }
 
-const groupBg: Record<EditorialGroup, string> = {
-  mainstream: "bg-mainstream-bg",
-  critico: "bg-critico-bg",
-  economico: "bg-economico-bg",
+const groupClasses: Record<EditorialGroup, string> = {
+  mainstream: "bg-mainstream-bg text-mainstream-fg",
+  critico: "bg-critico-bg text-critico-fg",
+  economico: "bg-economico-bg text-economico-fg",
 };
 
 export function SourceTabs({ bySource, sourcesById }: Props) {
@@ -42,12 +42,17 @@ export function SourceTabs({ bySource, sourcesById }: Props) {
           </button>
         ))}
       </div>
-      <div className={`mt-4 rounded-md p-4 ${groupBg[group]}`}>
-        <p className="text-xs uppercase tracking-wide opacity-70">Tono: {data.tone}</p>
-        <p className="mt-2 text-sm italic">{data.framing}</p>
-        <ul className="mt-3 list-inside list-disc text-sm">
+      <div className={`mt-4 rounded-md p-5 ${groupClasses[group]}`}>
+        <p className="text-xs font-semibold uppercase tracking-wide opacity-70">
+          Tono: {data.tone}
+        </p>
+        <p className="mt-3 text-base leading-relaxed italic">{data.framing}</p>
+        <ul className="mt-4 space-y-2 text-sm leading-relaxed">
           {data.highlights.map((h, i) => (
-            <li key={i}>{h}</li>
+            <li key={i} className="flex gap-2">
+              <span className="select-none opacity-60">▸</span>
+              <span>{h}</span>
+            </li>
           ))}
         </ul>
       </div>

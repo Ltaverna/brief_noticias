@@ -22,14 +22,14 @@ SEED_SOURCES: list[dict[str, str]] = [
         "slug": "infobae",
         "name": "Infobae",
         "editorial_group": "mainstream",
-        "rss_url": "https://www.infobae.com/feeds/rss/",
+        "rss_url": "https://www.infobae.com/arc/outboundfeeds/rss/",
         "base_url": "https://www.infobae.com",
     },
     {
         "slug": "pagina-12",
         "name": "Página 12",
         "editorial_group": "critico",
-        "rss_url": "https://www.pagina12.com.ar/rss/portada",
+        "rss_url": "https://www.pagina12.com.ar/arc/outboundfeeds/rss/portada/",
         "base_url": "https://www.pagina12.com.ar",
     },
     {
@@ -64,7 +64,7 @@ SEED_SOURCES: list[dict[str, str]] = [
         "slug": "bae",
         "name": "BAE Negocios",
         "editorial_group": "economico",
-        "rss_url": "https://www.baenegocios.com/rss/portada.xml",
+        "rss_url": "https://www.baenegocios.com/files/rss/ultimas-noticias.xml",
         "base_url": "https://www.baenegocios.com",
     },
 ]
