@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     top_n_clusters: int = 15
     similarity_threshold: float = 0.78
     cluster_window_hours: int = 48
-    embedding_model: str = "text-embedding-3-small"
+    embedding_model: str = "text-embedding-3-large"
     chat_model: str = "gpt-4o-mini"
     chat_model_analysis: str = "gpt-4o"
     user_agent: str = "noticias-bot/0.1 (+https://github.com/personal/noticias)"

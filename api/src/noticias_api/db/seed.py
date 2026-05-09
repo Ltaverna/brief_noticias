@@ -57,7 +57,7 @@ SEED_SOURCES: list[dict[str, str]] = [
         "slug": "el-cronista",
         "name": "El Cronista",
         "editorial_group": "economico",
-        "rss_url": "https://www.cronista.com/feed/",
+        "rss_url": "https://www.cronista.com/arc/outboundfeeds/news/",
         "base_url": "https://www.cronista.com",
     },
     {

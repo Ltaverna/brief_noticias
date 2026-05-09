@@ -19,5 +19,9 @@ async def embed_texts(
 ) -> list[list[float]]:
     if not texts:
         return []
-    response = await client.embeddings.create(model=model, input=texts)
+    # Pass dimensions=1536 so text-embedding-3-large fits our pgvector schema.
+    # text-embedding-3-small ignores this param (its native size is 1536).
+    response = await client.embeddings.create(
+        model=model, input=texts, dimensions=1536
+    )
     return [item.embedding for item in response.data]
