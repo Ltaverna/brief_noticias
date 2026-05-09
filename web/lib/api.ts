@@ -1,6 +1,8 @@
 import {
   Briefing,
   ClusterDetail,
+  EntityDetail,
+  EntitySummary,
   RunDetail,
   Saga,
   SagaDetail,
@@ -44,4 +46,14 @@ export const api = {
     get("/sagas", { next: { revalidate: 120 } }),
   getSaga: (id: number): Promise<SagaDetail> =>
     get(`/sagas/${id}`, { next: { revalidate: 120 } }),
+  getEntities: (params?: { kind?: string; q?: string; limit?: number }): Promise<EntitySummary[]> => {
+    const qs = new URLSearchParams();
+    if (params?.kind) qs.set("kind", params.kind);
+    if (params?.q) qs.set("q", params.q);
+    if (params?.limit) qs.set("limit", String(params.limit));
+    const qstr = qs.toString();
+    return get(`/entities${qstr ? `?${qstr}` : ""}`, { next: { revalidate: 120 } });
+  },
+  getEntity: (id: number): Promise<EntityDetail> =>
+    get(`/entities/${id}`, { next: { revalidate: 120 } }),
 };

@@ -36,6 +36,8 @@ async def _run_locked(trigger: str, settings: Settings) -> int:
             merge_window_hours=settings.merge_window_hours,
             saga_threshold=settings.saga_threshold,
             saga_window_hours=settings.saga_window_hours,
+            enable_entity_extraction=settings.enable_entity_extraction,
+            entity_extraction_model=settings.entity_extraction_model,
         )
         client = AsyncOpenAI(api_key=settings.openai_api_key)
         async with async_session_factory() as session:

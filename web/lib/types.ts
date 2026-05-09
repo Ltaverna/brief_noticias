@@ -60,6 +60,32 @@ export interface AnalysisDetail {
   generated_at: string;
 }
 
+export interface EntityRef {
+  id: number;
+  name: string;
+  kind: "person" | "org" | "place" | "event";
+}
+
+export interface EntitySummary extends EntityRef {
+  canonical: string;
+  mention_count: number;
+  cluster_count: number;
+  last_seen_at: string;
+}
+
+export interface EntityClusterRef {
+  id: number;
+  headline: string | null;
+  source_count: number;
+  article_count: number;
+  last_seen_at: string;
+  is_top: boolean;
+}
+
+export interface EntityDetail extends EntitySummary {
+  clusters: EntityClusterRef[];
+}
+
 export interface ClusterDetail {
   id: number;
   first_seen_at: string;
@@ -69,6 +95,7 @@ export interface ClusterDetail {
   analysis: AnalysisDetail | null;
   articles: ArticleDetail[];
   saga: { id: number; title: string } | null;
+  entities: EntityRef[];
 }
 
 export interface Saga {

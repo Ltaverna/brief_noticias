@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from noticias_api.db.models import Analysis, Article, Cluster, Saga, Source
+from noticias_api.db.models import Analysis, Article, Cluster, ClusterEntity, Entity, Saga, Source
 from noticias_api.db.session import get_session
 
 router = APIRouter(tags=["clusters"])
@@ -43,6 +43,12 @@ class SagaRef(BaseModel):
     title: str
 
 
+class EntityRef(BaseModel):
+    id: int
+    name: str
+    kind: str
+
+
 class ClusterDetail(BaseModel):
     id: int
     first_seen_at: datetime
@@ -52,6 +58,7 @@ class ClusterDetail(BaseModel):
     analysis: AnalysisOut | None
     articles: list[ArticleOut]
     saga: SagaRef | None
+    entities: list[EntityRef]
 
 
 @router.get("/clusters/{cluster_id}", response_model=ClusterDetail)
@@ -109,6 +116,14 @@ async def get_cluster(
         if saga:
             saga_ref = SagaRef(id=saga.id, title=saga.title)
 
+    ent_rows = await session.scalars(
+        select(Entity)
+        .join(ClusterEntity, ClusterEntity.entity_id == Entity.id)
+        .where(ClusterEntity.cluster_id == cluster_id)
+        .order_by(Entity.kind, Entity.name)
+    )
+    entities = [EntityRef(id=e.id, name=e.name, kind=e.kind) for e in ent_rows.all()]
+
     return ClusterDetail(
         id=cluster.id,
         first_seen_at=cluster.first_seen_at,
@@ -118,4 +133,5 @@ async def get_cluster(
         analysis=analysis_out,
         articles=article_outs,
         saga=saga_ref,
+        entities=entities,
     )

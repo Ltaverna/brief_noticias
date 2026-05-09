@@ -146,6 +146,37 @@ class Analysis(Base):
     cluster: Mapped[Cluster] = relationship(back_populates="analysis")
 
 
+class Entity(Base):
+    __tablename__ = "entities"
+    __table_args__ = (
+        UniqueConstraint("canonical", "kind", name="uq_entities_canon_kind"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    canonical: Mapped[str] = mapped_column(Text, nullable=False)
+    first_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    last_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    mention_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+
+
+class ClusterEntity(Base):
+    __tablename__ = "cluster_entities"
+
+    cluster_id: Mapped[int] = mapped_column(
+        ForeignKey("clusters.id", ondelete="CASCADE"), primary_key=True
+    )
+    entity_id: Mapped[int] = mapped_column(
+        ForeignKey("entities.id", ondelete="CASCADE"), primary_key=True
+    )
+    mention_count: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+
+
 class Run(Base):
     __tablename__ = "runs"
 

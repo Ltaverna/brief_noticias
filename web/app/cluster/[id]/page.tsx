@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { api } from "@/lib/api";
 import { DivergenceTable } from "@/components/DivergenceTable";
+import { EntityChip } from "@/components/EntityChip";
 import { Footer } from "@/components/Footer";
 import { SagaBadge } from "@/components/SagaBadge";
 import { SourceChip } from "@/components/SourceChip";
@@ -41,6 +42,13 @@ export default async function ClusterPage({
           {cluster.saga && (
             <div className="mt-2">
               <SagaBadge id={cluster.saga.id} title={cluster.saga.title} />
+            </div>
+          )}
+          {cluster.entities.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {cluster.entities.slice(0, 12).map((e) => (
+                <EntityChip key={e.id} id={e.id} name={e.name} kind={e.kind} />
+              ))}
             </div>
           )}
         </header>
