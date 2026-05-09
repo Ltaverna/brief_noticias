@@ -2,7 +2,7 @@ import { api } from "@/lib/api";
 import { ClusterCard } from "@/components/ClusterCard";
 import { Footer } from "@/components/Footer";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 export default async function BriefingByDatePage({
   params,

@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { api } from "@/lib/api";
 
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 export default async function HistorialPage() {
   const dates = await api.listBriefingDates();

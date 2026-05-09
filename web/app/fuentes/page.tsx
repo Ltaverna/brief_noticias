@@ -1,7 +1,7 @@
 import { api } from "@/lib/api";
 import { SourceToggle } from "@/components/SourceToggle";
 
-export const revalidate = 0;
+export const dynamic = "force-dynamic";
 
 const groupLabel: Record<string, string> = {
   mainstream: "Mainstream",

@@ -3,7 +3,7 @@ import { ClusterCard } from "@/components/ClusterCard";
 import { Footer } from "@/components/Footer";
 import { RefreshButton } from "@/components/RefreshButton";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const [briefing, sources] = await Promise.all([
