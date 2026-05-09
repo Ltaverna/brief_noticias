@@ -182,3 +182,28 @@ export interface QAResponse {
   used_citations: number[];
   citations: QACitation[];
 }
+
+export interface ToneTrends {
+  buckets: string[];
+  sources: string[];
+  tones: string[];
+  data: Record<string, Record<string, Record<string, number>>>;
+}
+
+export interface BiasCell {
+  favorable: number;
+  critico: number;
+  neutral: number;
+  other: number;
+  total: number;
+}
+
+export interface BiasRow {
+  source: string;
+  cells: Record<string, BiasCell>;
+}
+
+export interface BiasScorecard {
+  entities: { canonical: string; name: string; cluster_count: number }[];
+  rows: BiasRow[];
+}

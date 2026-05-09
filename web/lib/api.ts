@@ -1,4 +1,5 @@
 import {
+  BiasScorecard,
   Briefing,
   ClusterDetail,
   EntityDetail,
@@ -9,6 +10,7 @@ import {
   SagaDetail,
   SearchResults,
   SourceListItem,
+  ToneTrends,
 } from "./types";
 
 const baseUrl = (): string => {
@@ -57,6 +59,36 @@ export const api = {
   },
   getEntity: (id: number): Promise<EntityDetail> =>
     get(`/entities/${id}`, { next: { revalidate: 120 } }),
+  getToneTrends: (params?: {
+    entity?: string;
+    since?: string;
+    until?: string;
+    bucket?: "week" | "day";
+  }): Promise<ToneTrends> => {
+    const qs = new URLSearchParams();
+    if (params?.entity) qs.set("entity", params.entity);
+    if (params?.since) qs.set("since", params.since);
+    if (params?.until) qs.set("until", params.until);
+    if (params?.bucket) qs.set("bucket", params.bucket);
+    return get(
+      `/analytics/tone-trends${qs.toString() ? `?${qs}` : ""}`,
+      { cache: "no-store" },
+    );
+  },
+  getBiasScorecard: (params?: {
+    since?: string;
+    top_entities?: number;
+    kind?: string;
+  }): Promise<BiasScorecard> => {
+    const qs = new URLSearchParams();
+    if (params?.since) qs.set("since", params.since);
+    if (params?.top_entities) qs.set("top_entities", String(params.top_entities));
+    if (params?.kind) qs.set("kind", params.kind);
+    return get(
+      `/analytics/bias-scorecard${qs.toString() ? `?${qs}` : ""}`,
+      { cache: "no-store" },
+    );
+  },
   askQA: async (query: string): Promise<QAResponse> => {
     // Always go through the Next.js proxy at /api/qa so this works from the
     // browser (no CORS) and from server components alike.
