@@ -58,13 +58,22 @@ export const api = {
   getEntity: (id: number): Promise<EntityDetail> =>
     get(`/entities/${id}`, { next: { revalidate: 120 } }),
   askQA: async (query: string): Promise<QAResponse> => {
-    const res = await fetch(`${baseUrl()}/qa`, {
+    // Always go through the Next.js proxy at /api/qa so this works from the
+    // browser (no CORS) and from server components alike.
+    const url =
+      typeof window === "undefined"
+        ? `${baseUrl()}/qa`
+        : "/api/qa";
+    const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ query }),
       cache: "no-store",
     });
-    if (!res.ok) throw new Error(`QA failed: ${res.status}`);
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`QA failed: ${res.status}${text ? ` — ${text}` : ""}`);
+    }
     return res.json();
   },
 };
