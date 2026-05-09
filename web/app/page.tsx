@@ -1,7 +1,7 @@
 import { api } from "@/lib/api";
 import { ClusterCard } from "@/components/ClusterCard";
 import { Footer } from "@/components/Footer";
-// import { RefreshButton } from "@/components/RefreshButton"; // wired in Task 27
+import { RefreshButton } from "@/components/RefreshButton";
 
 export const revalidate = 60;
 
@@ -27,7 +27,7 @@ export default async function HomePage() {
               })}
             </p>
           </div>
-          {/* RefreshButton goes here in Task 27 */}
+          <RefreshButton />
         </div>
 
         {briefing.clusters.length === 0 ? (
