@@ -6,6 +6,7 @@ import { DivergenceTable } from "@/components/DivergenceTable";
 import { EntityChip } from "@/components/EntityChip";
 import { Footer } from "@/components/Footer";
 import { MarkReadButton } from "@/components/MarkReadButton";
+import { RegenerateAnalysisButton } from "@/components/RegenerateAnalysisButton";
 import { SagaBadge } from "@/components/SagaBadge";
 import { SourceChip } from "@/components/SourceChip";
 import { SourceTabs } from "@/components/SourceTabs";
@@ -54,6 +55,7 @@ export default async function ClusterPage({
           )}
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <MarkReadButton clusterId={cluster.id} />
+            <RegenerateAnalysisButton clusterId={cluster.id} />
           </div>
         </header>
 

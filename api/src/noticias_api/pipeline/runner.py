@@ -221,17 +221,28 @@ async def _embed_pending_articles(
 
 
 async def _analyze_top_clusters(
-    session: AsyncSession, client: AsyncOpenAI, cfg: PipelineConfig
+    session: AsyncSession,
+    client: AsyncOpenAI,
+    cfg: PipelineConfig,
+    *,
+    only_cluster_ids: set[int] | None = None,
 ) -> dict:
-    clusters = (
-        await session.scalars(select(Cluster).where(Cluster.is_top.is_(True)))
-    ).all()
+    if only_cluster_ids is not None:
+        clusters = (
+            await session.scalars(
+                select(Cluster).where(Cluster.id.in_(only_cluster_ids))
+            )
+        ).all()
+    else:
+        clusters = (
+            await session.scalars(select(Cluster).where(Cluster.is_top.is_(True)))
+        ).all()
     analyzed = 0
     for cluster in clusters:
         existing = await session.scalar(
             select(Analysis).where(Analysis.cluster_id == cluster.id)
         )
-        if existing and existing.generated_at >= cluster.last_seen_at:
+        if only_cluster_ids is None and existing and existing.generated_at >= cluster.last_seen_at:
             continue
         articles = (
             await session.scalars(

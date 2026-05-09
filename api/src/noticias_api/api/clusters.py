@@ -1,12 +1,15 @@
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
+from openai import AsyncOpenAI
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from noticias_api.config import Settings, get_settings
 from noticias_api.db.models import Analysis, Article, Cluster, ClusterEntity, Entity, Saga, Source
 from noticias_api.db.session import get_session
+from noticias_api.pipeline.runner import PipelineConfig, _analyze_top_clusters
 
 router = APIRouter(tags=["clusters"])
 
@@ -134,4 +137,59 @@ async def get_cluster(
         articles=article_outs,
         saga=saga_ref,
         entities=entities,
+    )
+
+
+@router.post("/clusters/{cluster_id}/regenerate-analysis", response_model=AnalysisOut | None)
+async def regenerate_analysis(
+    cluster_id: int,
+    settings: Settings = Depends(get_settings),
+    session: AsyncSession = Depends(get_session),
+) -> AnalysisOut:
+    cluster = await session.get(Cluster, cluster_id)
+    if not cluster:
+        raise HTTPException(status_code=404, detail="cluster not found")
+    if cluster.article_count < 1:
+        raise HTTPException(status_code=400, detail="cluster has no articles to analyze")
+
+    # Drop existing analysis to force regeneration
+    await session.execute(
+        delete(Analysis).where(Analysis.cluster_id == cluster_id)
+    )
+    await session.commit()
+
+    cfg = PipelineConfig(
+        top_n=settings.top_n_clusters,
+        similarity_threshold=settings.similarity_threshold,
+        window_hours=settings.cluster_window_hours,
+        embedding_model=settings.embedding_model,
+        analysis_model=settings.chat_model_analysis,
+        user_agent=settings.user_agent,
+        max_concurrent=settings.max_concurrent_fetches,
+        merge_threshold=settings.merge_threshold,
+        merge_window_hours=settings.merge_window_hours,
+        saga_threshold=settings.saga_threshold,
+        saga_window_hours=settings.saga_window_hours,
+        enable_entity_extraction=settings.enable_entity_extraction,
+        entity_extraction_model=settings.entity_extraction_model,
+    )
+    client = AsyncOpenAI(api_key=settings.openai_api_key)
+    await _analyze_top_clusters(
+        session, client, cfg, only_cluster_ids={cluster_id}
+    )
+
+    new_analysis = await session.scalar(
+        select(Analysis).where(Analysis.cluster_id == cluster_id)
+    )
+    if new_analysis is None:
+        raise HTTPException(status_code=502, detail="analysis regeneration failed")
+    return AnalysisOut(
+        headline=new_analysis.headline,
+        common_facts=new_analysis.common_facts or [],
+        by_source=new_analysis.by_source or {},
+        omissions=new_analysis.omissions or [],
+        divergences=new_analysis.divergences or [],
+        model=new_analysis.model,
+        prompt_version=new_analysis.prompt_version,
+        generated_at=new_analysis.generated_at,
     )
