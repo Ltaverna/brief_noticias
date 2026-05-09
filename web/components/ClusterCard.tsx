@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ClusterSummary, EditorialGroup, SourceListItem } from "@/lib/types";
 import { useReadState } from "./ReadStateProvider";
 import { SourceChip } from "./SourceChip";
+import { TOPIC_LABELS } from "./TopicChips";
 
 interface Props {
   cluster: ClusterSummary;
@@ -33,6 +34,11 @@ export function ClusterCard({ cluster, sourcesById }: Props) {
           {cluster.divergence_count === 1 ? "punto de divergencia" : "puntos de divergencia"}
         </p>
         <div className="mt-3 flex flex-wrap gap-1.5">
+          {cluster.topic && (
+            <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-300">
+              {TOPIC_LABELS[cluster.topic] ?? cluster.topic}
+            </span>
+          )}
           {cluster.sources.map((slug) => {
             const src = sourcesById.get(slug);
             if (!src) return null;

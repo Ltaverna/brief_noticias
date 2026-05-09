@@ -62,6 +62,7 @@ class ClusterDetail(BaseModel):
     articles: list[ArticleOut]
     saga: SagaRef | None
     entities: list[EntityRef]
+    topic: str | None
 
 
 @router.get("/clusters/{cluster_id}", response_model=ClusterDetail)
@@ -137,6 +138,7 @@ async def get_cluster(
         articles=article_outs,
         saga=saga_ref,
         entities=entities,
+        topic=cluster.topic,
     )
 
 

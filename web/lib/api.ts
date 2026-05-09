@@ -33,10 +33,14 @@ async function get<T>(path: string, opts?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  getTodayBriefing: (): Promise<Briefing> =>
-    get("/briefings/today", { next: { revalidate: 60 } }),
-  getBriefingByDate: (date: string): Promise<Briefing> =>
-    get(`/briefings/${date}`, { next: { revalidate: 60 } }),
+  getTodayBriefing: (params?: { topic?: string }): Promise<Briefing> => {
+    const qs = params?.topic ? `?topic=${encodeURIComponent(params.topic)}` : "";
+    return get(`/briefings/today${qs}`, { cache: "no-store" });
+  },
+  getBriefingByDate: (date: string, params?: { topic?: string }): Promise<Briefing> => {
+    const qs = params?.topic ? `?topic=${encodeURIComponent(params.topic)}` : "";
+    return get(`/briefings/${date}${qs}`, { cache: "no-store" });
+  },
   listBriefingDates: (): Promise<string[]> =>
     get("/briefings", { next: { revalidate: 300 } }),
   getCluster: (id: number): Promise<ClusterDetail> =>

@@ -15,6 +15,7 @@ export interface ClusterSummary {
   rank_score: number | null;
   common_facts: string[];
   divergence_count: number;
+  topic: string | null;
 }
 
 export interface Briefing {
@@ -96,6 +97,7 @@ export interface ClusterDetail {
   articles: ArticleDetail[];
   saga: { id: number; title: string } | null;
   entities: EntityRef[];
+  topic: string | null;
 }
 
 export interface Saga {

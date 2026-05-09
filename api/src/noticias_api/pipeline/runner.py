@@ -17,6 +17,7 @@ from noticias_api.pipeline.persist import persist_items
 from noticias_api.pipeline.rank import rank_top_clusters
 from noticias_api.pipeline.entities import extract_for_top_clusters
 from noticias_api.pipeline.saga import assign_sagas
+from noticias_api.pipeline.topic import classify_for_top_clusters
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +37,8 @@ class PipelineConfig:
     saga_window_hours: int = 168
     enable_entity_extraction: bool = True
     entity_extraction_model: str = "gpt-4o-mini"
+    enable_topic_classification: bool = True
+    topic_classification_model: str = "gpt-4o-mini"
 
 
 @dataclass
@@ -51,6 +54,7 @@ class RunStats:
     sagas_clusters_assigned: int = 0
     sagas_active: int = 0
     entities_extracted: int = 0
+    topics_classified: int = 0
     errors_per_source: dict[str, int] = field(default_factory=dict)
 
     def dump(self) -> dict:
@@ -66,6 +70,7 @@ class RunStats:
             "sagas_clusters_assigned": self.sagas_clusters_assigned,
             "sagas_active": self.sagas_active,
             "entities_extracted": self.entities_extracted,
+            "topics_classified": self.topics_classified,
             "errors_per_source": self.errors_per_source,
         }
 
@@ -143,6 +148,12 @@ async def run_pipeline(
                     session, client, model=cfg.entity_extraction_model
                 )
                 stats.entities_extracted = ent_stats.get("clusters_extracted", 0)
+
+            if cfg.enable_topic_classification:
+                topic_stats = await classify_for_top_clusters(
+                    session, client, model=cfg.topic_classification_model,
+                )
+                stats.topics_classified = topic_stats.get("classified", 0)
 
         final_status = "partial" if stats.errors_per_source else "success"
         await session.execute(

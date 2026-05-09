@@ -44,6 +44,9 @@ class Settings(BaseSettings):
     enable_entity_extraction: bool = True
     entity_extraction_model: str = "gpt-4o-mini"
 
+    enable_topic_classification: bool = True
+    topic_classification_model: str = "gpt-4o-mini"
+
     telegram_bot_token: str | None = None
     telegram_chat_id: str | None = None
     enable_telegram: bool = False

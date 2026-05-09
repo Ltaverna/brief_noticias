@@ -20,6 +20,7 @@ class ClusterSummary(BaseModel):
     rank_score: float | None
     common_facts: list[str]
     divergence_count: int
+    topic: str | None
 
 
 class BriefingOut(BaseModel):
@@ -28,14 +29,17 @@ class BriefingOut(BaseModel):
     clusters: list[ClusterSummary]
 
 
-async def _build_briefing(session: AsyncSession, target: date) -> BriefingOut:
-    clusters = (
-        await session.scalars(
-            select(Cluster)
-            .where(Cluster.display_date == target)
-            .order_by(Cluster.rank_score.desc().nullslast())
-        )
-    ).all()
+async def _build_briefing(
+    session: AsyncSession, target: date, *, topic: str | None = None
+) -> BriefingOut:
+    stmt = (
+        select(Cluster)
+        .where(Cluster.display_date == target)
+        .order_by(Cluster.rank_score.desc().nullslast())
+    )
+    if topic:
+        stmt = stmt.where(Cluster.topic == topic.strip().lower())
+    clusters = (await session.scalars(stmt)).all()
 
     summaries: list[ClusterSummary] = []
     generated_at: datetime | None = None
@@ -62,6 +66,7 @@ async def _build_briefing(session: AsyncSession, target: date) -> BriefingOut:
                 rank_score=c.rank_score,
                 common_facts=analysis.common_facts if analysis else [],
                 divergence_count=len(analysis.divergences) if analysis else 0,
+                topic=c.topic,
             )
         )
         if analysis and (generated_at is None or analysis.generated_at > generated_at):
@@ -71,8 +76,11 @@ async def _build_briefing(session: AsyncSession, target: date) -> BriefingOut:
 
 
 @router.get("/briefings/today", response_model=BriefingOut)
-async def get_today(session: AsyncSession = Depends(get_session)) -> BriefingOut:
-    return await _build_briefing(session, date.today())
+async def get_today(
+    topic: str | None = None,
+    session: AsyncSession = Depends(get_session),
+) -> BriefingOut:
+    return await _build_briefing(session, date.today(), topic=topic)
 
 
 @router.get("/briefings", response_model=list[date])
@@ -87,6 +95,8 @@ async def list_dates(session: AsyncSession = Depends(get_session)) -> list[date]
 
 @router.get("/briefings/{target_date}", response_model=BriefingOut)
 async def get_by_date(
-    target_date: date, session: AsyncSession = Depends(get_session)
+    target_date: date,
+    topic: str | None = None,
+    session: AsyncSession = Depends(get_session),
 ) -> BriefingOut:
-    return await _build_briefing(session, target_date)
+    return await _build_briefing(session, target_date, topic=topic)

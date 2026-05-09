@@ -73,6 +73,7 @@ class Cluster(Base):
     rank_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     is_top: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     display_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    topic: Mapped[str | None] = mapped_column(String(32), nullable=True)
     saga_id: Mapped[int | None] = mapped_column(
         ForeignKey("sagas.id", ondelete="SET NULL"), nullable=True
     )

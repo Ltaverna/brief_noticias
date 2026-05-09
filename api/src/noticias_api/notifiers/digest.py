@@ -65,8 +65,9 @@ async def _matching_cluster_ids_for_subs(
     entity_canons = [
         s.value.lower().strip() for s in subs if s.kind == "entity" and s.value
     ]
-    # topics not yet implemented (B3 will add Cluster.topic field)
-    # topic matching is a no-op for now — topic subs produce no matches
+    topics = [
+        s.value.lower().strip() for s in subs if s.kind == "topic" and s.value
+    ]
 
     if entity_canons:
         rows = await session.scalars(
@@ -76,6 +77,14 @@ async def _matching_cluster_ids_for_subs(
             .where(Cluster.display_date == target)
             .where(Entity.canonical.in_(entity_canons))
             .distinct()
+        )
+        matched.update(rows.all())
+
+    if topics:
+        rows = await session.scalars(
+            select(Cluster.id)
+            .where(Cluster.display_date == target)
+            .where(Cluster.topic.in_([t.lower().strip() for t in topics]))
         )
         matched.update(rows.all())
 
