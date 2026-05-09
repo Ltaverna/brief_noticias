@@ -3,9 +3,22 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from noticias_api.api import analytics, briefings, clusters, entities, qa, runs, sagas, search, sources, subscriptions
+from noticias_api.api import (
+    analytics,
+    briefings,
+    clusters,
+    entities,
+    qa,
+    runs,
+    sagas,
+    search,
+    sources,
+    subscriptions,
+    telegram_admin,
+    telegram_webhook,
+)
 from noticias_api.config import get_settings
-from noticias_api.scheduler import setup_scheduler
+from noticias_api.scheduler import setup_scheduler, teardown_polling
 
 logging.basicConfig(level=get_settings().log_level)
 
@@ -20,6 +33,7 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         scheduler.shutdown(wait=False)
+        teardown_polling()
 
 
 app = FastAPI(title="Noticias API", version="0.1.0", lifespan=lifespan)
@@ -33,6 +47,8 @@ app.include_router(search.router)
 app.include_router(entities.router)
 app.include_router(qa.router)
 app.include_router(subscriptions.router)
+app.include_router(telegram_admin.router)
+app.include_router(telegram_webhook.router)
 
 
 @app.get("/healthz")

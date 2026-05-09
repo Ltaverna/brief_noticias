@@ -49,6 +49,12 @@ class Settings(BaseSettings):
     enable_telegram: bool = False
     public_base_url: str = "http://localhost:3000"
 
+    # Bot interaction mode: 'off' | 'webhook' | 'polling'
+    telegram_bot_mode: str = "off"
+    telegram_webhook_secret: str | None = None
+    telegram_webhook_url: str | None = None  # public URL for /telegram/webhook endpoint
+    telegram_allowed_chats: str | None = None  # CSV; defaults to telegram_chat_id only
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

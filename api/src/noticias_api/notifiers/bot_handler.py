@@ -1,0 +1,154 @@
+import logging
+from typing import Any
+
+from openai import AsyncOpenAI
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from noticias_api.config import Settings
+from noticias_api.notifiers.telegram import (
+    TelegramClient,
+    TelegramError,
+    escape_markdown_v2 as esc,
+)
+from noticias_api.qa.retrieval import RetrievedChunk, retrieve_chunks
+from noticias_api.qa.synthesis import synthesize
+
+logger = logging.getLogger(__name__)
+
+
+WELCOME = (
+    "👋 Hola\\. Soy el bot de *Noticias*\\.\n\n"
+    "Hacé una pregunta sobre el corpus de diarios argentinos y te respondo con citas\\.\n"
+    "Comandos: /help"
+)
+
+HELP = (
+    "*Comandos disponibles*:\n\n"
+    "• Cualquier texto → pregunta libre al corpus\n"
+    "• /start → mensaje de bienvenida\n"
+    "• /help → este mensaje\n\n"
+    "_Ejemplo: ¿qué dijo La Nación esta semana sobre Adorni?_"
+)
+
+
+def allowed_chats(settings: Settings) -> set[str]:
+    """Return the set of chat_ids allowed to interact with the bot."""
+    raw = settings.telegram_allowed_chats
+    if raw:
+        return {c.strip() for c in raw.split(",") if c.strip()}
+    if settings.telegram_chat_id:
+        return {settings.telegram_chat_id}
+    return set()
+
+
+async def handle_update(
+    update: dict[str, Any],
+    *,
+    settings: Settings,
+    session: AsyncSession,
+) -> None:
+    """Process a single Telegram Update payload. Idempotent on bad payloads."""
+    msg = update.get("message") or update.get("edited_message")
+    if not msg:
+        return
+    chat = msg.get("chat") or {}
+    chat_id_raw = chat.get("id")
+    if chat_id_raw is None:
+        return
+    chat_id = str(chat_id_raw)
+
+    allowed = allowed_chats(settings)
+    if allowed and chat_id not in allowed:
+        logger.warning("ignoring message from unauthorized chat %s", chat_id)
+        return
+
+    text = (msg.get("text") or "").strip()
+    if not text:
+        return
+
+    if not settings.telegram_bot_token:
+        logger.error("bot enabled but no token")
+        return
+    bot = TelegramClient(settings.telegram_bot_token)
+
+    if text.startswith("/start"):
+        await bot.send_message(chat_id, WELCOME)
+        return
+    if text.startswith("/help"):
+        await bot.send_message(chat_id, HELP)
+        return
+    if text.startswith("/"):
+        await bot.send_message(
+            chat_id, esc("Comando no reconocido. Probá /help.")
+        )
+        return
+
+    # Treat as Q&A — send placeholder immediately for good UX
+    placeholder_msg_id = await bot.send_message(
+        chat_id, "🤔 Pensando\\.\\.\\."
+    )
+
+    try:
+        client = AsyncOpenAI(api_key=settings.openai_api_key)
+        chunks = await retrieve_chunks(
+            session, client, query=text, embedding_model=settings.embedding_model,
+        )
+        if not chunks:
+            await bot.edit_message_text(
+                chat_id,
+                placeholder_msg_id,
+                esc("No hay material indexado todavía."),
+            )
+            return
+
+        result = await synthesize(
+            client,
+            question=text,
+            chunks=chunks,
+            model=settings.chat_model_analysis,
+        )
+        formatted = format_qa_response(text, result.answer, result.used_citations, chunks)
+        await bot.edit_message_text(chat_id, placeholder_msg_id, formatted)
+    except Exception as exc:
+        logger.exception("qa handler failed")
+        try:
+            await bot.edit_message_text(
+                chat_id,
+                placeholder_msg_id,
+                f"❌ Error procesando la pregunta: {esc(str(exc)[:200])}",
+            )
+        except TelegramError:
+            pass
+
+
+def format_qa_response(
+    question: str,
+    answer: str,
+    used_citations: list[int],
+    chunks: list[RetrievedChunk],
+) -> str:
+    """Build a MarkdownV2 message: the answer body with citations as a tail block."""
+    lines: list[str] = []
+    # Escape the answer text; [N] citation markers are preserved as-is because
+    # digits and square brackets are escaped individually and the pattern
+    # \\[N\\] is still readable. We intentionally escape so raw answer is safe.
+    lines.append(esc(answer))
+
+    # Only render citations that are within bounds
+    valid_citations = [n for n in used_citations if 1 <= n <= len(chunks)]
+    if valid_citations:
+        lines.append("")
+        lines.append("*Fuentes*")
+        for n in valid_citations:
+            c = chunks[n - 1]
+            date_str = (
+                c.published_at.strftime("%Y-%m-%d") if c.published_at else "s/f"
+            )
+            link_label = esc(c.source_slug + " \\- " + date_str)
+            safe_url = c.url.replace(")", "\\)")
+            lines.append(f"\\[{n}\\] [{link_label}]({safe_url})")
+
+    msg = "\n".join(lines)
+    if len(msg) > 4000:
+        msg = msg[:3990] + esc("...")
+    return msg

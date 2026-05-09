@@ -14,6 +14,10 @@ from noticias_api.pipeline.runner import PipelineConfig, run_pipeline
 
 logger = logging.getLogger(__name__)
 
+# Module-level singletons for the polling background task
+_poller_task: asyncio.Task | None = None
+_poller_stop: asyncio.Event | None = None
+
 _pipeline_lock = asyncio.Lock()
 _current_run_id: int | None = None
 
@@ -62,6 +66,7 @@ def schedule_pipeline_in_task(trigger: str, settings: Settings) -> asyncio.Task:
 
 
 def setup_scheduler(settings: Settings) -> AsyncIOScheduler:
+    global _poller_task, _poller_stop
     scheduler = AsyncIOScheduler(timezone="America/Argentina/Buenos_Aires")
     for hour in settings.cron_hours_list:
         scheduler.add_job(
@@ -70,7 +75,27 @@ def setup_scheduler(settings: Settings) -> AsyncIOScheduler:
             id=f"daily_briefing_{hour:02d}",
             replace_existing=True,
         )
+
+    # Start telegram poller if mode=polling
+    if settings.telegram_bot_mode == "polling" and settings.enable_telegram:
+        from noticias_api.notifiers.poller import run_poller  # avoid circular import at module level
+
+        _poller_stop = asyncio.Event()
+        _poller_task = asyncio.create_task(run_poller(settings, stop_event=_poller_stop))
+        logger.info("Telegram polling task started")
+
     return scheduler
+
+
+def teardown_polling() -> None:
+    """Signal the polling task to stop and cancel it."""
+    global _poller_task, _poller_stop
+    if _poller_stop:
+        _poller_stop.set()
+    if _poller_task:
+        _poller_task.cancel()
+    _poller_stop = None
+    _poller_task = None
 
 
 def is_pipeline_running() -> bool:
