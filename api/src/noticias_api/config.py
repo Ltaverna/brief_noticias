@@ -12,8 +12,8 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     cron_hour: int = 7
     cron_minute: int = 0
-    top_n_clusters: int = 15
-    similarity_threshold: float = 0.78
+    top_n_clusters: int = 20
+    similarity_threshold: float = 0.70
     cluster_window_hours: int = 48
     embedding_model: str = "text-embedding-3-large"
     chat_model: str = "gpt-4o-mini"
