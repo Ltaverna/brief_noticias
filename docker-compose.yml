@@ -20,31 +20,23 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    environment:
-      DATABASE_URL: ${DATABASE_URL}
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
-      LOG_LEVEL: ${LOG_LEVEL}
-      CRON_HOUR: ${CRON_HOUR}
-      CRON_MINUTE: ${CRON_MINUTE}
-      TOP_N_CLUSTERS: ${TOP_N_CLUSTERS}
-      SIMILARITY_THRESHOLD: ${SIMILARITY_THRESHOLD}
-      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
-      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
-      ENABLE_TELEGRAM: ${ENABLE_TELEGRAM}
-      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL}
+    env_file:
+      - .env
     ports:
-      - "${API_PORT}:8000"
+      - "${API_PORT:-8000}:8000"
     restart: unless-stopped
 
   web:
-    build: ./web
+    build:
+      context: ./web
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
     depends_on:
       - api
-    environment:
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
-      INTERNAL_API_URL: ${INTERNAL_API_URL}
+    env_file:
+      - .env
     ports:
-      - "${WEB_PORT}:3000"
+      - "${WEB_PORT:-3000}:3000"
     restart: unless-stopped
 
 volumes:
