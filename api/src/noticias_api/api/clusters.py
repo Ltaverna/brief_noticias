@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from noticias_api.db.models import Analysis, Article, Cluster, Source
+from noticias_api.db.models import Analysis, Article, Cluster, Saga, Source
 from noticias_api.db.session import get_session
 
 router = APIRouter(tags=["clusters"])
@@ -38,6 +38,11 @@ class AnalysisOut(BaseModel):
     generated_at: datetime
 
 
+class SagaRef(BaseModel):
+    id: int
+    title: str
+
+
 class ClusterDetail(BaseModel):
     id: int
     first_seen_at: datetime
@@ -46,6 +51,7 @@ class ClusterDetail(BaseModel):
     source_count: int
     analysis: AnalysisOut | None
     articles: list[ArticleOut]
+    saga: SagaRef | None
 
 
 @router.get("/clusters/{cluster_id}", response_model=ClusterDetail)
@@ -97,6 +103,12 @@ async def get_cluster(
             generated_at=analysis.generated_at,
         )
 
+    saga_ref: SagaRef | None = None
+    if cluster.saga_id:
+        saga = await session.get(Saga, cluster.saga_id)
+        if saga:
+            saga_ref = SagaRef(id=saga.id, title=saga.title)
+
     return ClusterDetail(
         id=cluster.id,
         first_seen_at=cluster.first_seen_at,
@@ -105,4 +117,5 @@ async def get_cluster(
         source_count=cluster.source_count,
         analysis=analysis_out,
         articles=article_outs,
+        saga=saga_ref,
     )

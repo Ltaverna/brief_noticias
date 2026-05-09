@@ -2,6 +2,8 @@ import {
   Briefing,
   ClusterDetail,
   RunDetail,
+  Saga,
+  SagaDetail,
   SearchResults,
   SourceListItem,
 } from "./types";
@@ -38,4 +40,8 @@ export const api = {
   getRun: (id: number): Promise<RunDetail> => get(`/runs/${id}`, { cache: "no-store" }),
   search: (q: string, limit = 30): Promise<SearchResults> =>
     get(`/search?q=${encodeURIComponent(q)}&limit=${limit}`, { cache: "no-store" }),
+  getSagas: (): Promise<Saga[]> =>
+    get("/sagas", { next: { revalidate: 120 } }),
+  getSaga: (id: number): Promise<SagaDetail> =>
+    get(`/sagas/${id}`, { next: { revalidate: 120 } }),
 };

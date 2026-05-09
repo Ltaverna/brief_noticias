@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { api } from "@/lib/api";
 import { DivergenceTable } from "@/components/DivergenceTable";
 import { Footer } from "@/components/Footer";
+import { SagaBadge } from "@/components/SagaBadge";
 import { SourceChip } from "@/components/SourceChip";
 import { SourceTabs } from "@/components/SourceTabs";
 
@@ -37,6 +38,11 @@ export default async function ClusterPage({
           <p className="mt-2 text-sm text-stone-600 dark:text-stone-400">
             {cluster.source_count} diarios · {cluster.article_count} artículos
           </p>
+          {cluster.saga && (
+            <div className="mt-2">
+              <SagaBadge id={cluster.saga.id} title={cluster.saga.title} />
+            </div>
+          )}
         </header>
 
         {cluster.analysis === null ? (

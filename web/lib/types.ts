@@ -68,6 +68,30 @@ export interface ClusterDetail {
   source_count: number;
   analysis: AnalysisDetail | null;
   articles: ArticleDetail[];
+  saga: { id: number; title: string } | null;
+}
+
+export interface Saga {
+  id: number;
+  title: string;
+  cluster_count: number;
+  source_count: number;
+  article_count: number;
+  first_seen_at: string;
+  last_seen_at: string;
+}
+
+export interface SagaClusterRef {
+  id: number;
+  headline: string | null;
+  source_count: number;
+  article_count: number;
+  last_seen_at: string;
+  is_top: boolean;
+}
+
+export interface SagaDetail extends Saga {
+  clusters: SagaClusterRef[];
 }
 
 export interface SourceListItem {

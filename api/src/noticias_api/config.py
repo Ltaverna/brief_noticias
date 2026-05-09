@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     max_concurrent_fetches: int = 8
     merge_threshold: float = 0.85
     merge_window_hours: int = 72
+    saga_threshold: float = 0.78
+    saga_window_hours: int = 168
 
     telegram_bot_token: str | None = None
     telegram_chat_id: str | None = None

@@ -38,6 +38,25 @@ class Source(Base):
     articles: Mapped[list["Article"]] = relationship(back_populates="source")
 
 
+class Saga(Base):
+    __tablename__ = "sagas"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    centroid: Mapped[list[float] | None] = mapped_column(Vector(EMBEDDING_DIM), nullable=True)
+    first_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    last_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    cluster_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    source_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    article_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+
+    clusters: Mapped[list["Cluster"]] = relationship(back_populates="saga")
+
+
 class Cluster(Base):
     __tablename__ = "clusters"
 
@@ -54,11 +73,15 @@ class Cluster(Base):
     rank_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     is_top: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     display_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    saga_id: Mapped[int | None] = mapped_column(
+        ForeignKey("sagas.id", ondelete="SET NULL"), nullable=True
+    )
 
     articles: Mapped[list["Article"]] = relationship(back_populates="cluster")
     analysis: Mapped["Analysis | None"] = relationship(
         back_populates="cluster", uselist=False, cascade="all, delete-orphan"
     )
+    saga: Mapped["Saga | None"] = relationship(back_populates="clusters")
 
 
 class Article(Base):

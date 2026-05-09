@@ -15,6 +15,7 @@ from noticias_api.pipeline.extract import extract_content
 from noticias_api.pipeline.fetch import fetch_feed, parse_feed
 from noticias_api.pipeline.persist import persist_items
 from noticias_api.pipeline.rank import rank_top_clusters
+from noticias_api.pipeline.saga import assign_sagas
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,8 @@ class PipelineConfig:
     max_concurrent: int = 8
     merge_threshold: float = 0.85
     merge_window_hours: int = 72
+    saga_threshold: float = 0.78
+    saga_window_hours: int = 168
 
 
 @dataclass
@@ -42,6 +45,8 @@ class RunStats:
     new_clusters: int = 0
     merged_clusters: int = 0
     analyzed: int = 0
+    sagas_clusters_assigned: int = 0
+    sagas_active: int = 0
     errors_per_source: dict[str, int] = field(default_factory=dict)
 
     def dump(self) -> dict:
@@ -54,6 +59,8 @@ class RunStats:
             "new_clusters": self.new_clusters,
             "merged_clusters": self.merged_clusters,
             "analyzed": self.analyzed,
+            "sagas_clusters_assigned": self.sagas_clusters_assigned,
+            "sagas_active": self.sagas_active,
             "errors_per_source": self.errors_per_source,
         }
 
@@ -111,6 +118,15 @@ async def run_pipeline(
                 window_hours=cfg.merge_window_hours,
             )
             stats.merged_clusters = merge_stats.get("merged", 0)
+
+            # Third-pass: group clusters into sagas over the 7-day window.
+            saga_stats = await assign_sagas(
+                session,
+                threshold=cfg.saga_threshold,
+                window_hours=cfg.saga_window_hours,
+            )
+            stats.sagas_clusters_assigned = saga_stats.get("clusters_in_sagas", 0)
+            stats.sagas_active = saga_stats.get("active_sagas", 0)
 
             await rank_top_clusters(session, top_n=cfg.top_n)
 
