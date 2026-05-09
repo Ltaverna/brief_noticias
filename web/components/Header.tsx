@@ -12,6 +12,7 @@ export function Header() {
         <div className="flex items-center gap-4">
           <SearchBox />
           <nav className="flex items-center gap-4 text-sm">
+            <Link href="/qa" className="hover:underline">Preguntar</Link>
             <Link href="/entities" className="hover:underline">Entidades</Link>
             <Link href="/sagas" className="hover:underline">Sagas</Link>
             <Link href="/historial" className="hover:underline">Historial</Link>

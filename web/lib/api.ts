@@ -3,6 +3,7 @@ import {
   ClusterDetail,
   EntityDetail,
   EntitySummary,
+  QAResponse,
   RunDetail,
   Saga,
   SagaDetail,
@@ -56,4 +57,14 @@ export const api = {
   },
   getEntity: (id: number): Promise<EntityDetail> =>
     get(`/entities/${id}`, { next: { revalidate: 120 } }),
+  askQA: async (query: string): Promise<QAResponse> => {
+    const res = await fetch(`${baseUrl()}/qa`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query }),
+      cache: "no-store",
+    });
+    if (!res.ok) throw new Error(`QA failed: ${res.status}`);
+    return res.json();
+  },
 };

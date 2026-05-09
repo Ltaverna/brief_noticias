@@ -163,3 +163,22 @@ export interface SearchResults {
   clusters: ClusterHit[];
   articles: ArticleHit[];
 }
+
+export interface QACitation {
+  n: number;
+  article_id: number;
+  cluster_id: number | null;
+  source_slug: string;
+  source_name: string;
+  title: string;
+  url: string;
+  published_at: string | null;
+  snippet: string;
+}
+
+export interface QAResponse {
+  query: string;
+  answer: string;
+  used_citations: number[];
+  citations: QACitation[];
+}
