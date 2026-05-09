@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+@theme {
+  --color-mainstream-bg: oklch(0.97 0.01 80);
+  --color-mainstream-fg: oklch(0.30 0.03 80);
+  --color-critico-bg: oklch(0.96 0.02 250);
+  --color-critico-fg: oklch(0.30 0.05 250);
+  --color-economico-bg: oklch(0.97 0.02 140);
+  --color-economico-fg: oklch(0.30 0.05 140);
+  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+  --font-sans: system-ui, -apple-system, sans-serif;
+}
+
+html { color-scheme: light dark; }
+body { font-family: var(--font-sans); }
+h1, h2, h3 { font-family: var(--font-serif); }
