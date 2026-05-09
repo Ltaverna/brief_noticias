@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from noticias_api.api import runs, sources
+from noticias_api.api import briefings, runs, sources
 from noticias_api.config import get_settings
 from noticias_api.scheduler import setup_scheduler
 
@@ -25,6 +25,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Noticias API", version="0.1.0", lifespan=lifespan)
 app.include_router(sources.router)
 app.include_router(runs.router)
+app.include_router(briefings.router)
 
 
 @app.get("/healthz")
