@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from noticias_api.api import briefings, clusters, runs, sources
+from noticias_api.api import briefings, clusters, runs, search, sources
 from noticias_api.config import get_settings
 from noticias_api.scheduler import setup_scheduler
 
@@ -27,6 +27,7 @@ app.include_router(sources.router)
 app.include_router(runs.router)
 app.include_router(briefings.router)
 app.include_router(clusters.router)
+app.include_router(search.router)
 
 
 @app.get("/healthz")

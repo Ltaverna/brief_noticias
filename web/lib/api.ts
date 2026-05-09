@@ -2,6 +2,7 @@ import {
   Briefing,
   ClusterDetail,
   RunDetail,
+  SearchResults,
   SourceListItem,
 } from "./types";
 
@@ -35,4 +36,6 @@ export const api = {
   getSources: (): Promise<SourceListItem[]> =>
     get("/sources", { next: { revalidate: 300 } }),
   getRun: (id: number): Promise<RunDetail> => get(`/runs/${id}`, { cache: "no-store" }),
+  search: (q: string, limit = 30): Promise<SearchResults> =>
+    get(`/search?q=${encodeURIComponent(q)}&limit=${limit}`, { cache: "no-store" }),
 };

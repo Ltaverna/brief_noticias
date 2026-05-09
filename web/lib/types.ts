@@ -88,3 +88,27 @@ export interface RunDetail {
   stats: Record<string, unknown> | null;
   error: string | null;
 }
+
+export interface ClusterHit {
+  id: number;
+  headline: string | null;
+  source_count: number;
+  article_count: number;
+  rank: number;
+}
+
+export interface ArticleHit {
+  id: number;
+  title: string;
+  url: string;
+  source_slug: string;
+  cluster_id: number | null;
+  published_at: string | null;
+  rank: number;
+}
+
+export interface SearchResults {
+  query: string;
+  clusters: ClusterHit[];
+  articles: ArticleHit[];
+}

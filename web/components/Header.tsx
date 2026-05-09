@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { SearchBox } from "./SearchBox";
+
 export function Header() {
   return (
     <header className="sticky top-0 z-10 border-b border-stone-200 bg-white/85 backdrop-blur dark:border-stone-800 dark:bg-stone-950/85">
@@ -7,10 +9,13 @@ export function Header() {
         <Link href="/" className="text-xl font-serif font-bold tracking-tight">
           Noticias
         </Link>
-        <nav className="flex items-center gap-4 text-sm">
-          <Link href="/historial" className="hover:underline">Historial</Link>
-          <Link href="/fuentes" className="hover:underline">Fuentes</Link>
-        </nav>
+        <div className="flex items-center gap-4">
+          <SearchBox />
+          <nav className="flex items-center gap-4 text-sm">
+            <Link href="/historial" className="hover:underline">Historial</Link>
+            <Link href="/fuentes" className="hover:underline">Fuentes</Link>
+          </nav>
+        </div>
       </div>
     </header>
   );

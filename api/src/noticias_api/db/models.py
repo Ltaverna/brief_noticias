@@ -4,6 +4,7 @@ from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     BigInteger,
     Boolean,
+    Computed,
     Date,
     DateTime,
     Float,
@@ -14,7 +15,7 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 
@@ -80,6 +81,14 @@ class Article(Base):
     cluster_id: Mapped[int | None] = mapped_column(
         ForeignKey("clusters.id", ondelete="SET NULL"), nullable=True
     )
+    tsv: Mapped[str | None] = mapped_column(
+        TSVECTOR,
+        Computed(
+            "to_tsvector('spanish', coalesce(title, '') || ' ' || coalesce(content, summary, ''))",
+            persisted=True,
+        ),
+        nullable=True,
+    )
 
     source: Mapped[Source] = relationship(back_populates="articles")
     cluster: Mapped[Cluster | None] = relationship(back_populates="articles")
@@ -101,6 +110,14 @@ class Analysis(Base):
     prompt_version: Mapped[str | None] = mapped_column(String(16), nullable=True)
     generated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
+    )
+    tsv: Mapped[str | None] = mapped_column(
+        TSVECTOR,
+        Computed(
+            "to_tsvector('spanish', coalesce(headline, '') || ' ' || coalesce(common_facts::text, ''))",
+            persisted=True,
+        ),
+        nullable=True,
     )
 
     cluster: Mapped[Cluster] = relationship(back_populates="analysis")
