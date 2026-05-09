@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Página 12</title>
+    <link>https://www.pagina12.com.ar</link>
+    <description>Noticias</description>
+    <item>
+      <title>Inflación de abril fue del 4,2%</title>
+      <link>https://www.pagina12.com.ar/123/inflacion-abril</link>
+      <guid>https://www.pagina12.com.ar/123/inflacion-abril</guid>
+      <description>El INDEC informó hoy el dato de inflación del mes.</description>
+      <pubDate>Mon, 06 May 2026 14:00:00 -0300</pubDate>
+    </item>
+    <item>
+      <title>Boca venció a River por 2-1</title>
+      <link>https://www.pagina12.com.ar/124/superclasico</link>
+      <guid>https://www.pagina12.com.ar/124/superclasico</guid>
+      <description>El partido se jugó en La Bombonera.</description>
+      <pubDate>Sun, 05 May 2026 22:30:00 -0300</pubDate>
+    </item>
+  </channel>
+</rss>
