@@ -32,6 +32,8 @@ async def _run_locked(trigger: str, settings: Settings) -> int:
             analysis_model=settings.chat_model_analysis,
             user_agent=settings.user_agent,
             max_concurrent=settings.max_concurrent_fetches,
+            merge_threshold=settings.merge_threshold,
+            merge_window_hours=settings.merge_window_hours,
         )
         client = AsyncOpenAI(api_key=settings.openai_api_key)
         async with async_session_factory() as session:

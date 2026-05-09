@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     chat_model_analysis: str = "gpt-4o"
     user_agent: str = "noticias-bot/0.1 (+https://github.com/personal/noticias)"
     max_concurrent_fetches: int = 8
+    merge_threshold: float = 0.85
+    merge_window_hours: int = 72
 
     telegram_bot_token: str | None = None
     telegram_chat_id: str | None = None

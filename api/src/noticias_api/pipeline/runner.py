@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from noticias_api.db.models import Analysis, Article, Cluster, Run, Source
 from noticias_api.pipeline.analyze import analyze_cluster, prompt_version
-from noticias_api.pipeline.cluster import cluster_recent_articles
+from noticias_api.pipeline.cluster import cluster_recent_articles, merge_close_clusters
 from noticias_api.pipeline.embed import build_embedding_input, embed_texts
 from noticias_api.pipeline.extract import extract_content
 from noticias_api.pipeline.fetch import fetch_feed, parse_feed
@@ -28,6 +28,8 @@ class PipelineConfig:
     analysis_model: str
     user_agent: str
     max_concurrent: int = 8
+    merge_threshold: float = 0.85
+    merge_window_hours: int = 72
 
 
 @dataclass
@@ -38,6 +40,7 @@ class RunStats:
     embedded: int = 0
     clustered: int = 0
     new_clusters: int = 0
+    merged_clusters: int = 0
     analyzed: int = 0
     errors_per_source: dict[str, int] = field(default_factory=dict)
 
@@ -49,6 +52,7 @@ class RunStats:
             "embedded": self.embedded,
             "clustered": self.clustered,
             "new_clusters": self.new_clusters,
+            "merged_clusters": self.merged_clusters,
             "analyzed": self.analyzed,
             "errors_per_source": self.errors_per_source,
         }
@@ -99,6 +103,14 @@ async def run_pipeline(
             )
             stats.clustered = cluster_stats.get("clustered", 0)
             stats.new_clusters = cluster_stats.get("new_clusters", 0)
+
+            # Second-pass: merge clusters with similar centroids.
+            merge_stats = await merge_close_clusters(
+                session,
+                threshold=cfg.merge_threshold,
+                window_hours=cfg.merge_window_hours,
+            )
+            stats.merged_clusters = merge_stats.get("merged", 0)
 
             await rank_top_clusters(session, top_n=cfg.top_n)
 
