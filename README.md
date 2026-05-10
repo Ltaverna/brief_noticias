@@ -1,86 +1,118 @@
 # Noticias
 
-Compara cómo distintos diarios argentinos cubren las mismas noticias.
-Pipeline Python (FastAPI) + frontend Next.js + Postgres con pgvector.
+Compara cómo distintos diarios argentinos cubren las mismas noticias — y dónde divergen.
 
-## Stack
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Briefing del día                      [Actualizar]         │
+│                                                             │
+│  ┌──────────────────────┐  ┌──────────────────────┐        │
+│  │ Milei cierra acuerdo │  │ INDEC: inflación baja │        │
+│  │ 4 diarios · 2 div.   │  │ 7 diarios · 5 div.   │        │
+│  │ [política] [Clarín]  │  │ [economía] [Ámbito]  │        │
+│  │ [La Nación] [P12]    │  │ [Cronista] [Infobae] │        │
+│  └──────────────────────┘  └──────────────────────┘        │
+└─────────────────────────────────────────────────────────────┘
+```
 
-- **Backend:** Python 3.12, FastAPI, SQLAlchemy 2 async, Alembic, APScheduler
-- **Frontend:** Next.js 15, React 19, Tailwind 4, next-themes
-- **DB:** Postgres 16 + pgvector
-- **LLM:** OpenAI (embeddings + GPT-4o)
+## Por qué existe
+
+Los diarios argentinos cubren los mismos hechos con encuadres, énfasis y omisiones radicalmente distintos. Noticias agrupa automáticamente artículos que tratan el mismo evento, pide a GPT-4o que compare cómo los presenta cada diario, y muestra los resultados en un briefing diario. El objetivo es hacer visible el sesgo editorial sin requerir que el lector lea todos los diarios.
 
 ## Diarios cubiertos
 
-- Mainstream: La Nación, Clarín, Infobae
-- Crítico: Página 12, Tiempo Argentino, El Destape
-- Económico: Ámbito, El Cronista, BAE Negocios
+| Grupo | Diarios |
+|-------|---------|
+| Mainstream | La Nación, Clarín, Infobae |
+| Crítico | Página 12, Tiempo Argentino, El Destape |
+| Económico | Ámbito, El Cronista, BAE Negocios |
+
+## Qué podés hacer
+
+- **Briefing diario**: ver los clusters de noticias del día, filtrados por tema (política, economía, deportes, etc.)
+- **Detalle de cluster**: leer hechos en común, el encuadre de cada diario, omisiones y divergencias entre medios
+- **Sagas**: seguir historias que se extienden varios días
+- **Entidades**: explorar cómo se cubrió una persona, organización o lugar a lo largo del tiempo
+- **Q&A sobre el corpus**: hacerle preguntas al corpus de artículos con respuestas citadas
+- **Analytics**: ver tendencias de tono por diario y bias scorecard por entidad
+- **Suscripciones Telegram**: recibir digest filtrado y alertas cuando una historia cruza N fuentes
+- **Bot Telegram**: preguntas libres en lenguaje natural desde el chat
 
 ## Quickstart
 
-1. Copiar y editar variables:
+```bash
+# 1. Variables de entorno
+cp .env.example .env
+# Editar: OPENAI_API_KEY, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB
 
-   ```bash
-   cp .env.example .env
-   # editar OPENAI_API_KEY
-   ```
+# 2. Levantar servicios
+docker compose up --build
 
-2. Levantar todo:
+# 3. Migraciones (primera vez)
+docker compose exec api alembic upgrade head
 
-   ```bash
-   docker compose up --build
-   ```
+# 4. Sembrar fuentes (primera vez)
+docker compose exec api python -c "
+import asyncio
+from noticias_api.db.session import async_session_factory
+from noticias_api.db.seed import seed_sources
+async def main():
+    async with async_session_factory() as s:
+        print(await seed_sources(s))
+asyncio.run(main())
+"
 
-3. Aplicar migraciones (la primera vez):
+# 5. Abrir la app y correr el pipeline
+open http://localhost:3000  # clic en "Actualizar"
+```
 
-   ```bash
-   docker compose exec api alembic upgrade head
-   ```
+## Stack
 
-4. Sembrar fuentes (la primera vez):
+| Capa | Tecnología |
+|------|-----------|
+| Backend | Python 3.12, FastAPI, SQLAlchemy 2 async, Alembic, APScheduler |
+| Frontend | Next.js 15, React 19, Tailwind 4 |
+| Base de datos | Postgres 16 + pgvector |
+| LLM | OpenAI (`text-embedding-3-large`, `gpt-4o`, `gpt-4o-mini`) |
+| Notificaciones | Telegram Bot API |
 
-   ```bash
-   docker compose exec api python -c "
-   import asyncio
-   from noticias_api.db.session import async_session_factory
-   from noticias_api.db.seed import seed_sources
-   async def main():
-       async with async_session_factory() as s:
-           print(await seed_sources(s))
-   asyncio.run(main())
-   "
-   ```
-
-5. Visitar http://localhost:3000 — tocar **Actualizar** para correr el pipeline manualmente.
-
-## Estructura
-
-- `api/` — backend Python
-- `web/` — frontend Next.js
-- `scripts/` — backups y utilidades
-- `docs/superpowers/` — specs y planes
-
-## Configuración relevante (.env)
+## Variables de entorno relevantes
 
 | Variable | Default | Descripción |
 |----------|---------|-------------|
-| `OPENAI_API_KEY` | — | API key de OpenAI (requerido) |
-| `CRON_HOUR` | 7 | Hora del cron diario |
-| `TOP_N_CLUSTERS` | 15 | Cuántas historias destacar por día |
-| `SIMILARITY_THRESHOLD` | 0.78 | Umbral coseno para clustering |
+| `OPENAI_API_KEY` | — | Requerido |
+| `CRON_HOUR` | `7` | Hora del pipeline automático |
+| `CRON_HOURS` | — | Lista CSV para múltiples horas (`7,13,20`) |
+| `TOP_N_CLUSTERS` | `20` | Clusters destacados por día |
+| `SIMILARITY_THRESHOLD` | `0.70` | Umbral coseno para clustering |
+| `MERGE_THRESHOLD` | `0.85` | Umbral para fusionar clusters similares |
+| `SAGA_THRESHOLD` | `0.78` | Umbral para agrupar clusters en sagas |
+| `ENABLE_TELEGRAM` | `false` | Activar digest y bot |
+| `TELEGRAM_BOT_TOKEN` | — | Token del bot |
+| `TELEGRAM_CHAT_ID` | — | Chat destino del digest |
+| `TELEGRAM_BOT_MODE` | `off` | `webhook` o `polling` |
+
+## Documentación
+
+| Doc | Descripción |
+|-----|-------------|
+| [Guía de usuario](docs/user-guide.md) | Cómo usar la interfaz web y el bot |
+| [Arquitectura](docs/architecture.md) | Sistema, modelos de datos, pipeline |
+| [API Reference](docs/api-reference.md) | Todos los endpoints REST |
+| [Development](docs/development.md) | Setup local, tests, convenciones |
+| [Deployment](docs/deployment.md) | Raspberry Pi / VPS + Cloudflare Tunnel |
+
+## Tests
+
+```bash
+cd api && pytest -v          # 169 tests
+cd web && pnpm build         # smoke test del frontend
+```
 
 ## Backups
 
-Una corrida del script genera un dump y rota archivos viejos:
-
 ```bash
-./scripts/backup.sh
-```
-
-Para correr automáticamente, agregar al crontab del host:
-
-```
-0 4 * * * cd /path/to/noticias && ./scripts/backup.sh >> /var/log/noticias-backup.log 2>&1
+./scripts/backup.sh          # dump + rotación automática
 ```
 
 Restaurar:
@@ -89,16 +121,6 @@ Restaurar:
 docker compose exec -T postgres pg_restore -U noticias -d noticias < backups/noticias-XXXX.dump
 ```
 
-## Tests
+## Licencia
 
-API:
-
-```bash
-cd api && pytest -v
-```
-
-Frontend (build smoke):
-
-```bash
-cd web && pnpm build
-```
+MIT. Contribuciones bienvenidas — abrí un issue o PR.
