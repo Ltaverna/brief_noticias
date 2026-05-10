@@ -225,6 +225,19 @@ class Subscription(Base):
     )
 
 
+class ClusterNote(Base):
+    __tablename__ = "cluster_notes"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    cluster_id: Mapped[int] = mapped_column(
+        ForeignKey("clusters.id", ondelete="CASCADE"), nullable=False
+    )
+    note: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
 class AlertDelivery(Base):
     __tablename__ = "alert_deliveries"
     __table_args__ = (

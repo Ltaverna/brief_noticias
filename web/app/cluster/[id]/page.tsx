@@ -2,8 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { api } from "@/lib/api";
+import { ClusterNotes } from "@/components/ClusterNotes";
 import { DivergenceTable } from "@/components/DivergenceTable";
 import { EntityChip } from "@/components/EntityChip";
+import { ExportMenu } from "@/components/ExportMenu";
 import { Footer } from "@/components/Footer";
 import { MarkReadButton } from "@/components/MarkReadButton";
 import { RegenerateAnalysisButton } from "@/components/RegenerateAnalysisButton";
@@ -56,6 +58,7 @@ export default async function ClusterPage({
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <MarkReadButton clusterId={cluster.id} />
             <RegenerateAnalysisButton clusterId={cluster.id} />
+            <ExportMenu cluster={cluster} />
           </div>
         </header>
 
@@ -135,6 +138,8 @@ export default async function ClusterPage({
             ))}
           </ul>
         </section>
+
+        <ClusterNotes clusterId={cluster.id} />
       </main>
       <Footer generatedAt={cluster.analysis?.generated_at ?? null} />
     </>

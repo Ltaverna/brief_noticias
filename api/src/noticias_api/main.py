@@ -8,6 +8,7 @@ from noticias_api.api import (
     briefings,
     clusters,
     entities,
+    notes,
     qa,
     runs,
     sagas,
@@ -42,6 +43,7 @@ app.include_router(sources.router)
 app.include_router(runs.router)
 app.include_router(briefings.router)
 app.include_router(clusters.router)
+app.include_router(notes.router)
 app.include_router(sagas.router)
 app.include_router(search.router)
 app.include_router(entities.router)

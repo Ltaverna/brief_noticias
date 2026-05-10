@@ -202,6 +202,13 @@ export interface ToneTrends {
   data: Record<string, Record<string, Record<string, number>>>;
 }
 
+export interface ClusterNote {
+  id: number;
+  cluster_id: number;
+  note: string;
+  created_at: string;
+}
+
 export interface BiasCell {
   favorable: number;
   critico: number;
