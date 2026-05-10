@@ -17,7 +17,7 @@ const NAV_LINKS = [
 export function Header() {
   return (
     <header className="sticky top-0 z-10 border-b border-stone-200 bg-white/85 backdrop-blur dark:border-stone-800 dark:bg-stone-950/85">
-      <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3 sm:px-6">
+      <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3 sm:px-6">
         {/* Logo */}
         <Link href="/" className="text-xl font-serif font-bold tracking-tight shrink-0">
           Noticias

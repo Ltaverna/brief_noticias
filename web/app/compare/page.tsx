@@ -29,7 +29,7 @@ export default async function ComparePage({
   ]);
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
       <Link href="/" className="text-sm text-stone-500 hover:underline">
         ← Volver al briefing
       </Link>

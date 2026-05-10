@@ -22,7 +22,7 @@ export default async function HomePage({
 
   return (
     <>
-      <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
         <div className="flex items-end justify-between">
           <div>
             <h1 className="text-3xl font-serif font-bold">Briefing del día</h1>
