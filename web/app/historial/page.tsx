@@ -8,7 +8,7 @@ export default async function HistorialPage() {
   const dates = await api.listBriefingDates();
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-8">
+    <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
       <h1 className="text-3xl font-serif font-bold">Historial de briefings</h1>
       {dates.length === 0 ? (
         <p className="mt-6 text-stone-600 dark:text-stone-400">

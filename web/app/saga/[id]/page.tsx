@@ -14,7 +14,7 @@ export default async function SagaPage({
   if (!Number.isInteger(sid)) notFound();
   const saga = await api.getSaga(sid);
   return (
-    <main className="mx-auto max-w-3xl px-6 py-8">
+    <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
       <Link href="/sagas" className="text-sm text-stone-500 hover:underline">
         ← Sagas
       </Link>

@@ -17,7 +17,7 @@ export default async function BiasPage({
   });
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-8">
+    <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
       <h1 className="text-3xl font-serif font-bold">Bias scorecard</h1>
       <p className="mt-1 text-stone-600 dark:text-stone-400">
         % de análisis favorables vs críticos por diario × entidad (últimos 30 días).

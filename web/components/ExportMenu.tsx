@@ -36,14 +36,14 @@ export function ExportMenu({ cluster }: { cluster: ClusterDetail }) {
       <button
         type="button"
         onClick={copy}
-        className="rounded-md bg-stone-200 px-3 py-1.5 text-sm font-medium text-stone-700 hover:bg-stone-300 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700"
+        className="rounded-md bg-stone-200 px-3 py-2 min-h-[44px] text-sm font-medium text-stone-700 hover:bg-stone-300 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700"
       >
         {copied ? "✓ Copiado" : "📋 Copiar Markdown"}
       </button>
       <button
         type="button"
         onClick={download}
-        className="rounded-md bg-stone-200 px-3 py-1.5 text-sm font-medium text-stone-700 hover:bg-stone-300 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700"
+        className="rounded-md bg-stone-200 px-3 py-2 min-h-[44px] text-sm font-medium text-stone-700 hover:bg-stone-300 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700"
         title="Descargar como .md"
       >
         ⬇ .md

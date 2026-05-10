@@ -20,7 +20,7 @@ export default async function EntitiesPage({
   const entities = await api.getEntities({ kind: sp.kind, q: sp.q, limit: 100 });
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-8">
+    <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
       <h1 className="text-3xl font-serif font-bold">Entidades</h1>
       <div className="mt-4 flex flex-wrap gap-2">
         {KINDS.map((k) => (

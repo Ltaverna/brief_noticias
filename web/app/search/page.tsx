@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { api } from "@/lib/api";
+import { SearchBox } from "@/components/SearchBox";
 
 export const dynamic = "force-dynamic";
 
@@ -14,10 +15,13 @@ export default async function SearchPage({
 
   if (query.length < 2) {
     return (
-      <main className="mx-auto max-w-3xl px-6 py-8">
+      <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
         <h1 className="text-3xl font-serif font-bold">Búsqueda</h1>
+        <div className="mt-4">
+          <SearchBox fullWidth />
+        </div>
         <p className="mt-4 text-stone-600 dark:text-stone-400">
-          Escribí al menos 2 caracteres en la barra de búsqueda.
+          Escribí al menos 2 caracteres para buscar.
         </p>
       </main>
     );
@@ -26,9 +30,12 @@ export default async function SearchPage({
   const results = await api.search(query);
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-8">
+    <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
       <h1 className="text-3xl font-serif font-bold">Resultados</h1>
-      <p className="mt-1 text-stone-600 dark:text-stone-400">
+      <div className="mt-3">
+        <SearchBox fullWidth initialQuery={query} />
+      </div>
+      <p className="mt-3 text-stone-600 dark:text-stone-400">
         {results.clusters.length + results.articles.length} resultados para{" "}
         <em>&ldquo;{query}&rdquo;</em>
       </p>

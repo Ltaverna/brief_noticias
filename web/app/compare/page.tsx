@@ -14,7 +14,7 @@ export default async function ComparePage({
 
   if (!Number.isInteger(aId) || !Number.isInteger(bId)) {
     return (
-      <main className="mx-auto max-w-3xl px-6 py-8">
+      <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
         <h1 className="text-3xl font-serif font-bold">Comparar</h1>
         <p className="mt-4 text-stone-600 dark:text-stone-400">
           URL inválida. Usá <code>?a=ID&amp;b=ID</code> con dos cluster IDs válidos.
@@ -29,7 +29,7 @@ export default async function ComparePage({
   ]);
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-8">
+    <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <Link href="/" className="text-sm text-stone-500 hover:underline">
         ← Volver al briefing
       </Link>

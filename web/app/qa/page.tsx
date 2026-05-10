@@ -31,7 +31,7 @@ export default function QAPage() {
   }
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-8">
+    <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
       <h1 className="text-3xl font-serif font-bold">Preguntar al corpus</h1>
       <p className="mt-1 text-stone-600 dark:text-stone-400">
         Hacé una pregunta sobre las noticias indexadas. La respuesta cita los

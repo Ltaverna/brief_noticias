@@ -57,7 +57,7 @@ export default function SubscriptionsPage() {
   }
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-8">
+    <main className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
       <h1 className="text-3xl font-serif font-bold">Suscripciones</h1>
       <p className="mt-1 text-stone-600 dark:text-stone-400">
         Filtrá el digest de Telegram a temas/entidades específicas, y opcionalmente activá alertas
@@ -69,11 +69,11 @@ export default function SubscriptionsPage() {
         className="mt-6 space-y-3 rounded-md border border-stone-200 p-4 dark:border-stone-800"
       >
         <h2 className="font-semibold">Agregar</h2>
-        <div className="flex flex-wrap gap-2 text-sm">
+        <div className="flex flex-col gap-2 text-sm sm:flex-row sm:flex-wrap">
           <select
             value={kind}
             onChange={(e) => setKind(e.target.value as typeof kind)}
-            className="rounded-md border border-stone-300 bg-white px-2 py-1 dark:border-stone-700 dark:bg-stone-900"
+            className="w-full rounded-md border border-stone-300 bg-white px-2 py-2.5 min-h-[44px] dark:border-stone-700 dark:bg-stone-900 sm:w-auto"
           >
             <option value="entity">Entidad</option>
             <option value="topic">Tema</option>
@@ -86,7 +86,7 @@ export default function SubscriptionsPage() {
               value={value}
               onChange={(e) => setValue(e.target.value)}
               placeholder={kind === "entity" ? "ej: manuel adorni" : "ej: política"}
-              className="flex-1 rounded-md border border-stone-300 bg-white px-2 py-1 dark:border-stone-700 dark:bg-stone-900"
+              className="w-full rounded-md border border-stone-300 bg-white px-2 py-2.5 min-h-[44px] dark:border-stone-700 dark:bg-stone-900 sm:flex-1 sm:min-w-[180px]"
             />
           )}
 
@@ -97,12 +97,12 @@ export default function SubscriptionsPage() {
             placeholder="alerta ≥ N fuentes"
             min={2}
             max={20}
-            className="w-28 rounded-md border border-stone-300 bg-white px-2 py-1 dark:border-stone-700 dark:bg-stone-900"
+            className="w-full rounded-md border border-stone-300 bg-white px-2 py-2.5 min-h-[44px] dark:border-stone-700 dark:bg-stone-900 sm:w-36"
           />
 
           <button
             type="submit"
-            className="rounded-md bg-stone-900 px-3 py-1 text-white dark:bg-stone-100 dark:text-stone-900"
+            className="w-full rounded-md bg-stone-900 px-3 py-2.5 min-h-[44px] text-sm font-medium text-white dark:bg-stone-100 dark:text-stone-900 sm:w-auto"
           >
             Agregar
           </button>
@@ -121,9 +121,9 @@ export default function SubscriptionsPage() {
         {subs.map((s) => (
           <li
             key={s.id}
-            className="flex items-center justify-between rounded-md border border-stone-200 px-4 py-2 text-sm dark:border-stone-800"
+            className="flex items-center justify-between rounded-md border border-stone-200 px-4 py-3 text-sm dark:border-stone-800"
           >
-            <div>
+            <div className="min-w-0 flex-1 pr-3">
               <span className="font-mono text-xs text-stone-500">{s.kind}</span>{" "}
               <span className="font-medium">{s.value ?? "(sin filtro)"}</span>
               {s.alert_threshold_sources != null && (
@@ -135,7 +135,7 @@ export default function SubscriptionsPage() {
             <button
               type="button"
               onClick={() => onDelete(s.id)}
-              className="text-xs text-red-600 hover:underline dark:text-red-400"
+              className="shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center text-xs text-red-600 hover:underline dark:text-red-400"
             >
               quitar
             </button>

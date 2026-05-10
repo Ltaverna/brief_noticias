@@ -32,7 +32,7 @@ export default async function ClusterPage({
 
   return (
     <>
-      <main className="mx-auto max-w-4xl space-y-8 px-6 py-8">
+      <main className="mx-auto max-w-4xl space-y-8 px-4 py-8 sm:px-6">
         <header>
           <Link href="/" className="text-sm text-stone-500 hover:underline">
             ← Volver al briefing
@@ -55,7 +55,7 @@ export default async function ClusterPage({
               ))}
             </div>
           )}
-          <div className="mt-3 flex flex-wrap items-center gap-2">
+          <div className="mt-4 flex flex-wrap items-center gap-2">
             <MarkReadButton clusterId={cluster.id} />
             <RegenerateAnalysisButton clusterId={cluster.id} />
             <ExportMenu cluster={cluster} />

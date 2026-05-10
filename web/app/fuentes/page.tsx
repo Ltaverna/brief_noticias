@@ -17,7 +17,7 @@ export default async function FuentesPage() {
   }, {});
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-8">
+    <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
       <h1 className="text-3xl font-serif font-bold">Fuentes</h1>
       {Object.entries(groups).map(([group, items]) => (
         <section key={group} className="mt-6">

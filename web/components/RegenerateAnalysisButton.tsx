@@ -30,7 +30,7 @@ export function RegenerateAnalysisButton({ clusterId }: { clusterId: number }) {
         type="button"
         onClick={regen}
         disabled={loading}
-        className="rounded-md bg-amber-100 px-3 py-1.5 text-sm font-medium text-amber-900 transition hover:bg-amber-200 disabled:opacity-50 dark:bg-amber-900 dark:text-amber-100 dark:hover:bg-amber-800"
+        className="rounded-md bg-amber-100 px-3 py-2 min-h-[44px] text-sm font-medium text-amber-900 transition hover:bg-amber-200 disabled:opacity-50 dark:bg-amber-900 dark:text-amber-100 dark:hover:bg-amber-800"
         title="Reemplaza el análisis IA actual con uno nuevo (cuesta una llamada a GPT-4o)"
       >
         {loading ? "Regenerando..." : "↻ Regenerar análisis"}

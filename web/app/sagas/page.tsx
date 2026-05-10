@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export default async function SagasPage() {
   const sagas = await api.getSagas();
   return (
-    <main className="mx-auto max-w-3xl px-6 py-8">
+    <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
       <h1 className="text-3xl font-serif font-bold">Sagas activas</h1>
       <p className="mt-1 text-stone-600 dark:text-stone-400">
         Historias en desarrollo a través de varios días

@@ -23,7 +23,7 @@ export default async function EntityPage({
   }
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-8">
+    <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
       <Link href="/entities" className="text-sm text-stone-500 hover:underline">
         ← Entidades
       </Link>
