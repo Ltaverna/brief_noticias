@@ -10,6 +10,8 @@ from noticias_api.notifiers.telegram import (
     TelegramError,
     escape_markdown_v2 as esc,
 )
+from noticias_api.qa.hyde import generate_hypothetical
+from noticias_api.qa.memory import append_messages, load_recent_history
 from noticias_api.qa.retrieval import RetrievedChunk, retrieve_chunks
 from noticias_api.qa.synthesis import synthesize
 
@@ -88,10 +90,31 @@ async def handle_update(
         chat_id, "🤔 Pensando\\.\\.\\."
     )
 
+    # Use a stable conversation_id per Telegram chat so memory persists across
+    # multiple messages in the same chat.
+    conv_id = f"telegram:{chat_id}"
+
     try:
         client = AsyncOpenAI(api_key=settings.openai_api_key)
+
+        # 1. HyDE
+        hypothetical: str | None = None
+        if settings.enable_hyde:
+            try:
+                hypothetical = await generate_hypothetical(
+                    client, query=text, model=settings.hyde_model
+                )
+            except Exception:
+                logger.exception("hyde failed; falling back to raw query")
+
+        # 2. Retrieve (kNN + optional rerank)
         chunks = await retrieve_chunks(
-            session, client, query=text, embedding_model=settings.embedding_model,
+            session,
+            client,
+            query=text,
+            embedding_model=settings.embedding_model,
+            hypothetical=hypothetical,
+            settings=settings,
         )
         if not chunks:
             await bot.edit_message_text(
@@ -101,14 +124,36 @@ async def handle_update(
             )
             return
 
+        # 3. Load history
+        history_msgs = await load_recent_history(
+            session, conv_id, max_turns=settings.qa_history_turns
+        )
+        history = [{"role": m.role, "content": m.content} for m in history_msgs]
+
+        # 4. Synthesize
         result = await synthesize(
             client,
             question=text,
             chunks=chunks,
             model=settings.chat_model_analysis,
+            history=history,
         )
+
+        # 5. Send response
         formatted = format_qa_response(text, result.answer, result.used_citations, chunks)
         await bot.edit_message_text(chat_id, placeholder_msg_id, formatted)
+
+        # 6. Persist
+        await append_messages(
+            session,
+            conv_id,
+            text,
+            result.answer,
+            used_citations=result.used_citations,
+            hyde_query=hypothetical,
+            model=settings.chat_model_analysis,
+        )
+
     except Exception as exc:
         logger.exception("qa handler failed")
         try:

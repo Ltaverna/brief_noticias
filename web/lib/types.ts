@@ -183,6 +183,17 @@ export interface QAResponse {
   answer: string;
   used_citations: number[];
   citations: QACitation[];
+  conversation_id: string;
+  hyde_query?: string | null;
+}
+
+export interface QAMessage {
+  id: number;
+  role: "user" | "assistant";
+  content: string;
+  citations: QACitation[] | null;
+  used_citations: number[] | null;
+  created_at: string;
 }
 
 export interface Subscription {

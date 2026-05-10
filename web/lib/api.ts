@@ -4,6 +4,7 @@ import {
   ClusterDetail,
   EntityDetail,
   EntitySummary,
+  QAMessage,
   QAResponse,
   RunDetail,
   Saga,
@@ -121,23 +122,34 @@ export const api = {
     const res = await fetch(url, { method: "DELETE" });
     if (!res.ok) throw new Error(`${res.status}`);
   },
-  askQA: async (query: string): Promise<QAResponse> => {
+  askQA: async (query: string, conversationId?: string | null): Promise<QAResponse> => {
     // Always go through the Next.js proxy at /api/qa so this works from the
     // browser (no CORS) and from server components alike.
     const url =
       typeof window === "undefined"
         ? `${baseUrl()}/qa`
         : "/api/qa";
+    const body: Record<string, string> = { query };
+    if (conversationId) body.conversation_id = conversationId;
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query }),
+      body: JSON.stringify(body),
       cache: "no-store",
     });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       throw new Error(`QA failed: ${res.status}${text ? ` — ${text}` : ""}`);
     }
+    return res.json();
+  },
+  getQAHistory: async (conversationId: string): Promise<QAMessage[]> => {
+    const url =
+      typeof window === "undefined"
+        ? `${baseUrl()}/qa/history?conversation_id=${encodeURIComponent(conversationId)}`
+        : `/api/qa/history?conversation_id=${encodeURIComponent(conversationId)}`;
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) return [];
     return res.json();
   },
 };

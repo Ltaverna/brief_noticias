@@ -19,6 +19,7 @@ REGLAS:
 - No inventes datos. No uses conocimiento externo.
 - Si querés contrastar fuentes, citá ambas: "La Nación enfatiza X [2], mientras que Página 12 destaca Y [5]."
 - Mantené la respuesta entre 100 y 400 palabras según la complejidad.
+- Si esta es una pregunta de seguimiento (hay turnos previos en el historial), tené en cuenta el contexto de la conversación.
 """
 
 
@@ -57,14 +58,26 @@ async def synthesize(
     question: str,
     chunks: list[RetrievedChunk],
     model: str,
+    history: list[dict] | None = None,  # list of {role, content} prior turns
 ) -> SynthesisResult:
+    """Generate an answer grounded in the retrieved chunks.
+
+    `history` is a list of prior conversation turns (dicts with `role` and
+    `content` keys) that are injected between the system prompt and the current
+    user message to provide multi-turn context.
+    """
     user_prompt = build_user_prompt(question, chunks)
+    messages: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT}]
+    for turn in (history or []):
+        role = turn.get("role", "")
+        content = turn.get("content", "")
+        if role in ("user", "assistant") and content:
+            messages.append({"role": role, "content": content})
+    messages.append({"role": "user", "content": user_prompt})
+
     response = await client.chat.completions.create(
         model=model,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_prompt},
-        ],
+        messages=messages,
         temperature=0.2,
     )
     answer = (response.choices[0].message.content or "").strip()

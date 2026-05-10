@@ -58,6 +58,16 @@ class Settings(BaseSettings):
     telegram_webhook_url: str | None = None  # public URL for /telegram/webhook endpoint
     telegram_allowed_chats: str | None = None  # CSV; defaults to telegram_chat_id only
 
+    # RAG upgrades
+    cohere_api_key: str | None = None
+    enable_hyde: bool = True
+    enable_reranking: bool = True
+    qa_history_turns: int = 6
+    hyde_model: str = "gpt-4o-mini"
+    rerank_model: str = "rerank-multilingual-v3.0"
+    rerank_initial_k: int = 50
+    rerank_top_k: int = 10
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
