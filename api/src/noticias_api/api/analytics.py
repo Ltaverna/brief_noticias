@@ -1,6 +1,6 @@
 import unicodedata
 from collections import defaultdict
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
@@ -58,14 +58,23 @@ async def tone_trends(
     bucket: Annotated[str, Query(pattern="^(week|day)$")] = "week",
     session: AsyncSession = Depends(get_session),
 ):
-    until = until or date.today()
-    since = since or (until - timedelta(days=30))
+    # Use UTC-aware bounds. Default upper bound is "now" (not today's
+    # date) so data timestamped past local midnight isn't excluded.
+    now_utc = datetime.now(UTC)
+    until_dt = (
+        datetime.combine(until, datetime.max.time(), tzinfo=UTC)
+        if until else now_utc
+    )
+    if since is None:
+        since_dt = now_utc - timedelta(days=30)
+    else:
+        since_dt = datetime.combine(since, datetime.min.time(), tzinfo=UTC)
 
     stmt = (
         select(Analysis, Cluster.last_seen_at)
         .join(Cluster, Cluster.id == Analysis.cluster_id)
-        .where(Cluster.last_seen_at >= since)
-        .where(Cluster.last_seen_at <= datetime.combine(until, datetime.max.time()))
+        .where(Cluster.last_seen_at >= since_dt)
+        .where(Cluster.last_seen_at <= until_dt)
     )
     if entity:
         stmt = (
@@ -129,8 +138,11 @@ async def bias_scorecard(
     kind: Annotated[str, Query(pattern="^(person|org|place|event)$")] = "person",
     session: AsyncSession = Depends(get_session),
 ):
-    until = date.today()
-    since = since or (until - timedelta(days=30))
+    now_utc = datetime.now(UTC)
+    if since is None:
+        since_dt = now_utc - timedelta(days=30)
+    else:
+        since_dt = datetime.combine(since, datetime.min.time(), tzinfo=UTC)
 
     # Pick top entities by cluster_count in window
     top = (
@@ -143,7 +155,7 @@ async def bias_scorecard(
             .join(ClusterEntity, ClusterEntity.entity_id == Entity.id)
             .join(Cluster, Cluster.id == ClusterEntity.cluster_id)
             .where(Entity.kind == kind)
-            .where(Cluster.last_seen_at >= since)
+            .where(Cluster.last_seen_at >= since_dt)
             .group_by(Entity.canonical, Entity.name)
             .order_by(func.count(ClusterEntity.cluster_id).desc())
             .limit(top_entities)
@@ -166,7 +178,7 @@ async def bias_scorecard(
         .join(ClusterEntity, ClusterEntity.cluster_id == Cluster.id)
         .join(Entity, Entity.id == ClusterEntity.entity_id)
         .where(Entity.canonical.in_(canonicals))
-        .where(Cluster.last_seen_at >= since)
+        .where(Cluster.last_seen_at >= since_dt)
     )
     rows = (await session.execute(stmt)).all()
 
