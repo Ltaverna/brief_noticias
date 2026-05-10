@@ -191,14 +191,40 @@ Ambas listas incluyen un puntaje de relevancia (`ts_rank`) y link a la página d
 
 ## Q&A — Preguntar al corpus
 
-La página `/qa` permite hacer preguntas en lenguaje natural sobre el corpus de artículos indexados.
+La página `/qa` permite hacer preguntas en lenguaje natural sobre el corpus de artículos indexados. La interfaz es conversacional: cada pregunta es un turno en el mismo hilo, y podés hacer seguimientos sin repetir el contexto.
 
-### Cómo funciona
+### Conversación multi-turno
 
-1. La pregunta se convierte en un embedding.
-2. Se recuperan los 20 artículos más similares semánticamente (RAG sobre pgvector).
-3. GPT-4o sintetiza una respuesta en español con citas numeradas.
-4. Las citas aparecen como `[N]` en el texto y como lista al pie con snippet y link.
+Las preguntas se encadenan automáticamente dentro de una sesión del navegador. El sistema recuerda los últimos turnos de la conversación:
+
+```
+Vos: ¿Qué dijo Clarín sobre el acuerdo con el FMI?
+Bot: Clarín destacó que el acuerdo fue firmado el lunes [1]...
+
+Vos: ¿Y Página 12?
+Bot: Página 12 cuestionó el monto real del acuerdo [2]...
+```
+
+Para empezar una conversación nueva (olvidar el hilo anterior), hacer clic en el botón **"Nueva conversación"**.
+
+### Badge de cobertura
+
+Debajo de cada respuesta aparece un badge que indica qué tan bien cubierta está la pregunta en el corpus:
+
+| Badge | Significado |
+|-------|-------------|
+| ✓ Cobertura buena | El pipeline encontró al menos 3 artículos claramente relevantes. |
+| △ Cobertura parcial | Solo 1-2 artículos relevantes. La respuesta puede ser incompleta. |
+| ○ Sin cobertura | No se encontró información relevante. El sistema lo indica sin inventar. |
+
+### Cómo funciona (simplificado)
+
+1. Tu pregunta se transforma en una "respuesta hipotética" con estilo periodístico (HyDE), que sirve como vector de búsqueda más preciso.
+2. Se recuperan los artículos más cercanos semánticamente (hasta 50 candidatos).
+3. Un reranker de Cohere selecciona los 10 más relevantes (si `COHERE_API_KEY` está configurado).
+4. CRAG-lite evalúa chunk por chunk si el material es realmente pertinente.
+5. GPT-4o sintetiza la respuesta con citas numeradas `[N]`.
+6. La conversación se guarda para que el siguiente turno tenga contexto.
 
 ### Ejemplos de preguntas
 
@@ -206,12 +232,13 @@ La página `/qa` permite hacer preguntas en lenguaje natural sobre el corpus de 
 ¿Qué dijo La Nación esta semana sobre Adorni?
 ¿Cuáles son las distintas versiones sobre el acuerdo con el FMI?
 ¿Qué cobertura dio Página 12 a la negociación?
+¿Y Clarín?  ← pregunta de seguimiento sin repetir el tema
 ```
 
 ### Límites
 
 - Solo cubre el corpus indexado (artículos en la base de datos).
-- Si la respuesta no está en el corpus, el modelo lo indica explícitamente.
+- Si la respuesta no está en el corpus, el badge "Sin cobertura" aparece y el modelo no inventa.
 - No usa conocimiento externo al corpus.
 
 ---
@@ -272,7 +299,7 @@ El bot responde mensajes en el chat configurado.
 
 ### Preguntas libres
 
-Cualquier mensaje que no sea un comando se trata como una pregunta al corpus (Q&A). El bot responde con el mismo pipeline RAG que la página `/qa`, mostrando la respuesta con citas como links clickeables.
+Cualquier mensaje que no sea un comando se trata como una pregunta al corpus (Q&A). El bot usa el mismo pipeline RAG que la página `/qa` — con HyDE, reranking y CRAG-lite — y retorna la respuesta con citas como links clickeables.
 
 ```
 Usuario: ¿Qué dijo Clarín sobre el acuerdo con el FMI?
@@ -284,7 +311,13 @@ Bot: Clarín destacó que el acuerdo fue anunciado el lunes
      Fuentes
      [1] clarin - 2026-05-08
      [2] clarin - 2026-05-07
+
+Usuario: ¿Y Página 12?
+
+Bot: Página 12 cuestionó el monto real, citando fuentes del FMI [3]...
 ```
+
+**Memoria por chat:** cada conversación de Telegram tiene su propio historial persistente. El bot recuerda los últimos 6 turnos del chat, por lo que las preguntas de seguimiento funcionan igual que en la interfaz web.
 
 ### Modes
 

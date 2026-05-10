@@ -479,14 +479,18 @@ Búsqueda de texto completo sobre artículos y análisis (Postgres FTS, dicciona
 
 ### `POST /qa`
 
-Pregunta al corpus usando RAG (retrieval + GPT-4o synthesis).
+Pregunta al corpus usando el pipeline RAG completo: HyDE → kNN → reranking → CRAG-lite → síntesis con GPT-4o. Mantiene memoria de conversación por `conversation_id`.
 
 **Body:**
 ```json
-{"query": "¿Qué dijo La Nación sobre el acuerdo con el FMI?"}
+{
+  "query": "¿Qué dijo La Nación sobre el acuerdo con el FMI?",
+  "conversation_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+}
 ```
 
-`query` debe tener entre 3 y 500 caracteres.
+- `query`: requerido, 3-500 caracteres.
+- `conversation_id`: opcional. Si se omite, se genera uno nuevo y se retorna en la respuesta. Pasarlo en llamadas sucesivas para mantener contexto de conversación.
 
 **Response:** `QAResponse`
 ```json
@@ -506,11 +510,79 @@ Pregunta al corpus usando RAG (retrieval + GPT-4o synthesis).
       "published_at": "2026-05-09T06:30:00Z",
       "snippet": "El presidente Milei anunció el lunes..."
     }
-  ]
+  ],
+  "conversation_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "hyde_query": "La Nación informó que el acuerdo con el FMI fue firmado el lunes por el presidente Milei...",
+  "confidence": "confident",
+  "crag_verdicts": {
+    "1": "relevant",
+    "2": "relevant",
+    "3": "not_relevant",
+    "4": "ambiguous"
+  }
 }
 ```
 
-**Errors:** `500` si no hay OPENAI_API_KEY configurado.
+**Campos nuevos en la respuesta:**
+
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `conversation_id` | `str` | ID de la conversación. Usar en la siguiente request para continuar el hilo. |
+| `hyde_query` | `str \| null` | Texto hipotético generado por HyDE (para debugging/transparencia). `null` si HyDE está desactivado. |
+| `confidence` | `"confident" \| "partial" \| "empty"` | Veredicto de CRAG-lite. `empty` indica que no se encontró información relevante. |
+| `crag_verdicts` | `dict[str, str] \| null` | Veredictos por chunk (`"relevant"`, `"ambiguous"`, `"not_relevant"`). `null` si CRAG está desactivado. |
+
+**Comportamiento por nivel de confianza:**
+
+| `confidence` | Qué pasó | Qué retorna |
+|-------------|----------|-------------|
+| `confident` | ≥3 chunks relevantes | Respuesta normal con citas. |
+| `partial` | 1-2 chunks relevantes | Respuesta con advertencia de cobertura limitada. |
+| `empty` | 0 chunks relevantes | `answer` es un mensaje de "no encontré información". No se llama a GPT-4o. |
+
+**Errors:** `500` si `OPENAI_API_KEY` no está configurado.
+
+---
+
+### `GET /qa/history`
+
+Retorna el historial de mensajes de una conversación en orden cronológico.
+
+**Query params:**
+- `conversation_id` (str, requerido): ID de la conversación.
+- `limit` (int, default 20): máximo de mensajes a retornar.
+
+**Response:** `QAMessage[]`
+```json
+[
+  {
+    "id": 1,
+    "role": "user",
+    "content": "¿Qué dijo La Nación sobre el acuerdo con el FMI?",
+    "citations": null,
+    "used_citations": null,
+    "created_at": "2026-05-09T10:00:00Z"
+  },
+  {
+    "id": 2,
+    "role": "assistant",
+    "content": "La Nación destacó que el acuerdo fue firmado el lunes [1]...",
+    "citations": [
+      {
+        "n": 1,
+        "article_id": 501,
+        "source_slug": "lanacion",
+        "title": "El gobierno llegó a un acuerdo con el FMI",
+        "url": "https://www.lanacion.com.ar/..."
+      }
+    ],
+    "used_citations": [1],
+    "created_at": "2026-05-09T10:00:05Z"
+  }
+]
+```
+
+**Errors:** `422` si falta `conversation_id`.
 
 ---
 

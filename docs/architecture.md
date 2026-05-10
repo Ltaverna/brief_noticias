@@ -217,6 +217,24 @@ alert_threshold_sources INTEGER NULL
 created_at           TIMESTAMPTZ
 ```
 
+#### `qa_messages`
+
+Historial de conversaciones de Q&A (web y bot Telegram).
+
+```
+id              BIGINT PK
+conversation_id VARCHAR(64)          -- UUID para web, "telegram:{chat_id}" para bot
+role            VARCHAR(16)          -- "user" | "assistant"
+content         TEXT                 -- texto del mensaje
+citations       JSONB NULL           -- solo en rol "assistant": lista de citas usadas
+used_citations  JSONB NULL           -- índices de citas referenciadas en el texto
+hyde_query      TEXT NULL            -- texto hipotético generado por HyDE (solo assistant)
+model           VARCHAR(64)          -- modelo usado (ej: "gpt-4o")
+created_at      TIMESTAMPTZ
+```
+
+Índice sobre `(conversation_id, created_at)` para recuperar el historial cronológico de una conversación en tiempo O(log n).
+
 #### `alert_deliveries`
 
 Registro de alertas enviadas (evita duplicados).
@@ -380,28 +398,79 @@ El merge pass corrige los casos donde clusters "hermanos" se forman en paralelo 
 
 ## RAG pipeline (Q&A)
 
+### Pipeline completo
+
 ```
-Query (texto)
+query (texto)
+    │
+    ▼ HyDE — gpt-4o-mini
+genera "respuesta hipotética" con estilo periodístico
+    │
+    ▼ embed (text-embedding-3-large, 1536d)
+embedding del texto hipotético (no de la query original)
+    │
+    ▼ kNN — pgvector
+SELECT articles ORDER BY embedding <=> hyde_vec LIMIT 50
+    │
+    ▼ Cohere v2/rerank (rerank-multilingual-v3.0)
+re-rankea los 50 candidatos → top 10
+(se omite si COHERE_API_KEY no está configurado; pasa directamente los primeros 10 del kNN)
+    │
+    ▼ CRAG-lite — gpt-4o-mini
+evalúa la relevancia de cada chunk individualmente:
+  ├── ≥3 relevantes → "confident": descarta irrelevantes
+  ├── 1-2 relevantes → "partial": conserva todos + activa prompt de advertencia
+  └── 0 relevantes → "empty": retorna "No encontré información..." sin llamar a GPT-4o
+    │
+    ▼ cargar historial de conversación
+últimos N turnos de qa_messages (conversation_id, rol, contenido)
+    │
+    ▼ síntesis — gpt-4o
+prompt consciente de confianza: con/sin advertencia de cobertura parcial
+instrucción de citar solo con [N] inline, no inventar datos
+    │
+    ▼ persistencia
+INSERT en qa_messages: mensaje del usuario + respuesta del asistente
     │
     ▼
-embed_texts(query) ──► VECTOR(1536)
-    │
-    ▼
-SELECT articles ORDER BY embedding <=> query_vec LIMIT 20
-    │ (cosine distance via pgvector)
-    ▼
-20 RetrievedChunks (title + body[:1500])
-    │
-    ▼
-GPT-4o synthesis
-  system: "Respondé en español con citas [N]"
-  user: "Pregunta: ... Fragmentos: [1]... [2]..."
-    │
-    ▼
-SynthesisResult(answer, used_citations)
+QAResponse {
+  answer, citations, used_citations,
+  conversation_id, hyde_query, confidence, crag_verdicts
+}
 ```
 
-El modelo tiene instrucción explícita de no inventar datos y de citar solo con `[N]` inline. `used_citations` se extrae post-hoc con regex `\[(\d+)\]` sobre la respuesta.
+### Por qué HyDE
+
+Un embedding de la pregunta original (`¿Qué dijo La Nación sobre el FMI?`) está en el espacio semántico de las preguntas, que es diferente al espacio de los artículos periodísticos. HyDE genera primero una "respuesta hipotética" con lenguaje similar al corpus (afirmaciones declarativas, estilo nota), la embeddea, y usa ese vector para recuperar artículos. Esto mejora el recall, especialmente en queries vagas o cortas.
+
+El texto hipotético se incluye en `hyde_query` en la respuesta para transparencia.
+
+### Por qué Cohere rerank
+
+El primer paso de recuperación usa un bi-encoder (text-embedding-3-large): rápido y escalable pero compara vectores aislados. El reranker de Cohere es un cross-encoder: ve query y documento juntos en el mismo contexto, lo que le permite capturar matices como filtros por fuente específica (`¿qué dijo Clarín?`) que el bi-encoder pierde.
+
+Si `COHERE_API_KEY` no está configurado, el sistema degrada graciosamente: omite el paso y usa el top-K directo del kNN.
+
+### Por qué CRAG-lite
+
+El pipeline RAG clásico siempre pasa los fragmentos al LLM y deja que este "admita" que no sabe. El problema: GPT-4o tiende a sintetizar algo incluso con material irrelevante. CRAG-lite fuerza una verificación de relevancia por chunk antes de la síntesis:
+
+- **confident** (≥3 chunks relevantes): respuesta normal.
+- **partial** (1-2 relevantes): respuesta con advertencia de cobertura limitada.
+- **empty** (0 relevantes): corto-circuita sin llamar a GPT-4o, retorna mensaje de "no encontré información".
+
+El campo `crag_verdicts` en la respuesta expone los dictámenes por chunk (`{"1": "relevant", "2": "not_relevant", ...}`).
+
+### Memoria de conversación
+
+Cada sesión de Q&A tiene un `conversation_id`:
+
+- **Web**: UUID generado en el primer mensaje, persistido en `localStorage` bajo la clave `noticias:qa-conversation`. El botón "Nueva conversación" limpia el key.
+- **Bot Telegram**: `f"telegram:{chat_id}"` — cada chat tiene memoria propia automáticamente.
+
+Los últimos `qa_history_turns` turnos (default 6) se cargan de `qa_messages` y se insertan en el prompt antes de la síntesis. Esto permite preguntas de seguimiento (`¿y qué dijo Página 12?`) sin repetir el contexto.
+
+---
 
 ---
 
@@ -427,6 +496,8 @@ El bot usa el mismo pipeline de Q&A que el endpoint `/qa`. Soporta:
 - `/start` → mensaje de bienvenida.
 - `/help` → lista de comandos.
 - Texto libre → RAG sobre el corpus con respuesta en MarkdownV2.
+
+**Memoria conversacional:** el bot pasa `conversation_id = f"telegram:{chat_id}"` en cada llamada a `/qa`. Cada chat Telegram tiene así su propia memoria de los últimos 6 turnos (configurable con `qa_history_turns`) sin ninguna configuración extra.
 
 Para chats no autorizados (definidos por `TELEGRAM_ALLOWED_CHATS`), el bot ignora silenciosamente los mensajes.
 

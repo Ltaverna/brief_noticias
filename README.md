@@ -33,10 +33,12 @@ Los diarios argentinos cubren los mismos hechos con encuadres, énfasis y omisio
 - **Detalle de cluster**: leer hechos en común, el encuadre de cada diario, omisiones y divergencias entre medios
 - **Sagas**: seguir historias que se extienden varios días
 - **Entidades**: explorar cómo se cubrió una persona, organización o lugar a lo largo del tiempo
-- **Q&A sobre el corpus**: hacerle preguntas al corpus de artículos con respuestas citadas
+- **Q&A conversacional**: preguntas multi-turno con memoria de conversación, HyDE + reranking + CRAG-lite, badge de cobertura y citas numeradas
 - **Analytics**: ver tendencias de tono por diario y bias scorecard por entidad
 - **Suscripciones Telegram**: recibir digest filtrado y alertas cuando una historia cruza N fuentes
-- **Bot Telegram**: preguntas libres en lenguaje natural desde el chat
+- **Bot Telegram**: preguntas libres en lenguaje natural con memoria persistente por chat
+- **PWA instalable**: agregar a la pantalla de inicio en iOS y Android
+- **Mobile responsive**: navegación hamburger, búsqueda accesible en mobile
 
 ## Quickstart
 
@@ -91,6 +93,11 @@ open http://localhost:3000  # clic en "Actualizar"
 | `TELEGRAM_BOT_TOKEN` | — | Token del bot |
 | `TELEGRAM_CHAT_ID` | — | Chat destino del digest |
 | `TELEGRAM_BOT_MODE` | `off` | `webhook` o `polling` |
+| `COHERE_API_KEY` | — | Opcional. Activa reranking en Q&A (Cohere v2). Sin él, se usa el top-K del kNN directamente. |
+| `ENABLE_HYDE` | `true` | HyDE en el pipeline Q&A |
+| `ENABLE_RERANKING` | `true` | Reranking Cohere en Q&A (requiere `COHERE_API_KEY`) |
+| `ENABLE_CRAG` | `true` | Evaluación de relevancia por chunk en Q&A |
+| `QA_HISTORY_TURNS` | `6` | Turnos de conversación a incluir en el prompt |
 
 ## Documentación
 
@@ -105,7 +112,7 @@ open http://localhost:3000  # clic en "Actualizar"
 ## Tests
 
 ```bash
-cd api && pytest -v          # 169 tests
+cd api && pytest -v          # 209 tests
 cd web && pnpm build         # smoke test del frontend
 ```
 

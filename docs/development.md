@@ -71,7 +71,7 @@ cd api
 pytest -v
 ```
 
-169 tests, todos async (pytest-asyncio con `asyncio_mode = "auto"`).
+209 tests, todos async (pytest-asyncio con `asyncio_mode = "auto"`).
 
 ### Estructura de tests
 
@@ -87,6 +87,7 @@ api/tests/
 ├── test_topic.py         -- clasificación de temas
 ├── test_rank.py          -- ranking de clusters
 ├── test_persist.py       -- idempotencia de persist_items
+├── test_qa_*.py          -- tests del pipeline RAG (HyDE, rerank, CRAG, historial)
 ├── test_api_*.py         -- tests de endpoints REST
 └── test_notifiers_*.py   -- tests del digest y alertas
 ```
@@ -123,6 +124,99 @@ def respx_mock():
 pytest tests/test_cluster.py -v
 pytest tests/test_api_briefings.py::test_today_empty -v
 ```
+
+---
+
+## Working with the RAG pipeline
+
+El pipeline de Q&A vive en `api/src/noticias_api/api/qa.py`. Los pasos en orden:
+
+```
+HyDE → embed → kNN (pgvector) → rerank (Cohere) → CRAG → cargar historial → síntesis (GPT-4o) → persistir en qa_messages
+```
+
+### Flags de configuración (config.py)
+
+| Flag | Default | Descripción |
+|------|---------|-------------|
+| `enable_hyde` | `True` | Generar texto hipotético antes de embedear la query |
+| `enable_reranking` | `True` | Aplicar Cohere rerank sobre los candidatos del kNN |
+| `enable_crag` | `True` | Evaluar relevancia por chunk antes de sintetizar |
+| `qa_history_turns` | `6` | Turnos anteriores a incluir en el prompt |
+| `cohere_api_key` | `None` | Si es `None`, el reranking se omite sin error |
+| `hyde_model` | `"gpt-4o-mini"` | Modelo para generar la respuesta hipotética |
+| `rerank_model` | `"rerank-multilingual-v3.0"` | Modelo de Cohere para reranking |
+| `rerank_initial_k` | `50` | Candidatos kNN enviados al reranker |
+| `rerank_top_k` | `10` | Chunks que pasan del reranker a CRAG/síntesis |
+| `crag_model` | `"gpt-4o-mini"` | Modelo para los veredictos de relevancia |
+| `crag_min_relevant` | `3` | Chunks relevantes mínimos para nivel "confident" |
+
+Para desactivar un paso en desarrollo, setearlo en `False` en el `.env` (o en el `Settings` object directamente en tests):
+
+```python
+# Desactivar reranking localmente sin COHERE_API_KEY
+ENABLE_RERANKING=false
+```
+
+### COHERE_API_KEY es opcional
+
+Si la variable no está seteada (o `enable_reranking=False`), el sistema usa directamente los primeros `rerank_top_k` resultados del kNN sin llamar a Cohere. La degradación es silenciosa: `crag_verdicts` y `confidence` siguen funcionando igual sobre los candidatos del kNN.
+
+Para testear con reranking real en desarrollo, agregar al `.env`:
+
+```
+COHERE_API_KEY=tu_key_aqui
+```
+
+### Agregar un nuevo paso al pipeline RAG
+
+El lugar correcto es `api/src/noticias_api/api/qa.py`, dentro de la función de orquestación principal. El patrón general:
+
+```python
+# 1. El paso recibe los chunks actuales y las settings
+async def mi_paso_rag(
+    chunks: list[RetrievedChunk],
+    query: str,
+    settings: Settings,
+    client: AsyncOpenAI,
+) -> list[RetrievedChunk]:
+    if not settings.enable_mi_paso:
+        return chunks
+    # ... lógica ...
+    return chunks_filtrados
+
+# 2. Wiring en la función principal de qa.py
+chunks = await mi_paso_rag(chunks, query, settings, client)
+```
+
+Agregar el flag de activación en `config.py` (`enable_mi_paso: bool = True`) y en `.env.example`.
+
+### Testear pasos RAG con mocks
+
+Los tests en `test_qa_*.py` mockean OpenAI y Cohere con `respx` (HTTP) o `unittest.mock`. El patrón común:
+
+```python
+# Mockear la llamada de HyDE (chat completion)
+with respx.mock:
+    respx.post("https://api.openai.com/v1/chat/completions").mock(
+        return_value=httpx.Response(200, json={
+            "choices": [{"message": {"content": "respuesta hipotética..."}}]
+        })
+    )
+    result = await qa_endpoint(QARequest(query="¿qué pasó?"), session=db_session, settings=settings)
+    assert result.confidence in ("confident", "partial", "empty")
+```
+
+Para testear la integración completa con `db_session`, ver los fixtures en `conftest.py` — la DB de test tiene los mismos embeddings fake que el resto de la suite.
+
+### Patrón conversation_id
+
+| Cliente | Formato | Generado por |
+|---------|---------|-------------|
+| Web | UUID v4 (ej: `a1b2c3d4-...`) | `web/lib/qa-session.ts` en el primer mensaje |
+| Bot Telegram | `telegram:{chat_id}` | `bot_handler.py` — hard-coded por chat |
+
+El `conversation_id` llega en el body de `POST /qa`. Si se omite, la API genera uno nuevo y lo retorna en la respuesta. El frontend lo persiste en `localStorage["noticias:qa-conversation"]`.
 
 ---
 
@@ -422,11 +516,27 @@ En Next.js, las variables `NEXT_PUBLIC_*` se inlinean en el bundle en tiempo de 
 
 ### CORS y proxy routes
 
-Las llamadas POST desde el browser al API FastAPI dan CORS. Usá las route handlers de Next.js (`web/app/api/*`) como proxy para esas llamadas. Ver `web/app/api/qa/route.ts` como ejemplo.
+Las llamadas POST desde el browser al API FastAPI dan CORS. Usá las route handlers de Next.js (`web/app/api/*`) como proxy para esas llamadas. Ver `web/app/api/qa/route.ts` como ejemplo. El historial de conversación también pasa por un proxy en `web/app/api/qa/history/route.ts`.
+
+### COHERE_API_KEY es opcional en desarrollo
+
+Si no tenés `COHERE_API_KEY` en tu `.env`, el reranking se omite silenciosamente. El sistema usa el top-K del kNN directamente. No lanza excepción ni warning — es un degradado limpio. Acordate de agregar la key si querés testear el comportamiento con reranking real.
+
+### conversation_id en tests de Q&A
+
+Al testear multi-turno, pasá siempre el mismo `conversation_id` entre requests. Sin él, cada llamada crea una conversación nueva y el historial no se carga. Para tests aislados, usá un UUID generado en el fixture para no contaminar otras conversaciones.
 
 ### La DB en tests usa pytest-postgresql
 
 `pytest-postgresql` levanta una instancia real de Postgres para cada sesión de test y aplica migraciones automáticamente vía Alembic. Requiere `pg_ctl` en el PATH. En CI o sin Postgres local, usar `docker-compose exec api pytest`.
+
+### Credenciales de GitHub (insteadOf)
+
+El repo usa una regla `url.insteadOf` en la config de git para el credential helper de `gh`. Si clonás el repo en otra máquina y `git push` falla con error de autenticación, asegurate de tener `gh` instalado y autenticado (`gh auth login`) antes de clonar, o configurar el helper manualmente:
+
+```bash
+gh auth setup-git
+```
 
 ---
 

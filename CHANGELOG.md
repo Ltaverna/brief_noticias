@@ -4,6 +4,33 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.3.0] — 2026-05-09
+
+### Added
+
+- **RAG upgrades**: memoria de conversación (`qa_messages`), HyDE (gpt-4o-mini), Cohere reranking (rerank-multilingual-v3.0), CRAG-lite para veredictos de relevancia por chunk
+- **Q&A multi-turno**: `conversation_id` persistente en web (`localStorage`) y bot Telegram (`telegram:{chat_id}`)
+- **Badge de cobertura** en la UI de Q&A: ✓ confident / △ partial / ○ empty según veredicto CRAG
+- **`GET /qa/history`**: endpoint para recuperar el historial de una conversación
+- **Mobile responsive**: hamburger nav drawer, ícono de búsqueda en header mobile, BiasScorecard como cards en mobile y tabla en desktop
+- **PWA instalable**: `manifest.json` + íconos + apple-touch-icon; instalable desde iOS/Android
+- Safe-area insets para notch de iOS; tamaños de botón touch-friendly (`min-h-[44px]`)
+- Suite de documentación técnica completa (arquitectura, API ref, guía de usuario, dev guide)
+
+### Fixed
+
+- Analytics endpoints: bounds UTC-aware (antes excluía datos después de medianoche UTC local)
+- Q&A CORS: llamadas del browser ahora pasan por proxy Next.js en `/api/qa` y `/api/qa/history`
+
+### Changed
+
+- `POST /qa` body: ahora acepta `conversation_id` (opcional)
+- `POST /qa` response: ahora incluye `conversation_id`, `hyde_query`, `confidence`, `crag_verdicts`
+- `/qa` es stateful por `conversation_id`; el comportamiento de sesión única (sin conversation_id) sigue funcionando igual
+- Bot Telegram Q&A: usa memoria persistente por chat (últimos 6 turnos por defecto)
+
+---
+
 ## [0.2.0] — 2026-05-09
 
 ### Added
@@ -51,11 +78,6 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
-## Próximas versiones
-
-- **v0.2.1** — Responsive mobile + PWA (en progreso)
-
----
-
-[0.2.0]: https://github.com/personal/noticias/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/personal/noticias/releases/tag/v0.1.0
+[0.3.0]: https://github.com/Ltaverna/brief_noticias/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/Ltaverna/brief_noticias/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/Ltaverna/brief_noticias/releases/tag/v0.1.0
