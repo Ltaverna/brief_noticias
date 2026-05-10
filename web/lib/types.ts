@@ -185,6 +185,8 @@ export interface QAResponse {
   citations: QACitation[];
   conversation_id: string;
   hyde_query?: string | null;
+  confidence?: "confident" | "partial" | "empty";
+  crag_verdicts?: Record<string, "relevant" | "ambiguous" | "irrelevant">;
 }
 
 export interface QAMessage {

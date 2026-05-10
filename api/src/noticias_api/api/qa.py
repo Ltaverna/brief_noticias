@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from noticias_api.config import Settings, get_settings
 from noticias_api.db.session import get_session
+from noticias_api.qa.crag import EMPTY_ANSWER, evaluate_relevance, filter_chunks
 from noticias_api.qa.hyde import generate_hypothetical
 from noticias_api.qa.memory import append_messages, load_recent_history, new_conversation_id
 from noticias_api.qa.retrieval import retrieve_chunks
@@ -42,6 +43,8 @@ class QAResponse(BaseModel):
     citations: list[QACitation]
     conversation_id: str
     hyde_query: str | None = None
+    confidence: str = "confident"  # 'confident' | 'partial' | 'empty'
+    crag_verdicts: dict[str, str] | None = None
 
 
 @router.post("/qa", response_model=QAResponse)
@@ -85,22 +88,63 @@ async def ask_qa(
             hyde_query=hypothetical,
         )
 
-    # 3. Load conversation history
+    # 3. CRAG-lite — evaluate chunk relevance and decide strategy
+    crag_confidence: str = "confident"
+    crag_verdicts: dict[str, str] | None = None
+    filtered_chunks = chunks
+
+    if settings.enable_crag:
+        crag = await evaluate_relevance(
+            client,
+            query=body.query,
+            chunks=chunks,
+            model=settings.crag_model,
+            min_relevant=settings.crag_min_relevant,
+        )
+        crag_confidence = crag.confidence
+        crag_verdicts = {str(k): v for k, v in crag.verdicts.items()}
+        filtered_chunks = filter_chunks(chunks, crag)
+
+        if crag.confidence == "empty":
+            # Short-circuit: return honest "no encontré"
+            await append_messages(
+                session,
+                conversation_id,
+                body.query,
+                EMPTY_ANSWER,
+                citations=[],
+                used_citations=[],
+                hyde_query=hypothetical,
+                model="crag-empty",
+            )
+            return QAResponse(
+                query=body.query,
+                answer=EMPTY_ANSWER,
+                used_citations=[],
+                citations=[],
+                conversation_id=conversation_id,
+                hyde_query=hypothetical,
+                confidence="empty",
+                crag_verdicts=crag_verdicts,
+            )
+
+    # 4. Load conversation history
     history_msgs = await load_recent_history(
         session, conversation_id, max_turns=settings.qa_history_turns
     )
     history = [{"role": m.role, "content": m.content} for m in history_msgs]
 
-    # 4. Synthesize answer
+    # 5. Synthesize answer (uses filtered chunks; [N] markers renumbered 1..len)
     result = await synthesize(
         client,
         question=body.query,
-        chunks=chunks,
+        chunks=filtered_chunks,
         model=settings.chat_model_analysis,
         history=history,
+        confidence_hint=crag_confidence,
     )
 
-    # 5. Build citations payload
+    # 6. Build citations payload (renumbered to match filtered_chunks)
     citations = [
         QACitation(
             n=i + 1,
@@ -113,10 +157,10 @@ async def ask_qa(
             published_at=c.published_at,
             snippet=c.snippet,
         )
-        for i, c in enumerate(chunks)
+        for i, c in enumerate(filtered_chunks)
     ]
 
-    # 6. Persist both turns
+    # 7. Persist both turns
     await append_messages(
         session,
         conversation_id,
@@ -135,6 +179,8 @@ async def ask_qa(
         citations=citations,
         conversation_id=conversation_id,
         hyde_query=hypothetical,
+        confidence=crag_confidence,
+        crag_verdicts=crag_verdicts,
     )
 
 

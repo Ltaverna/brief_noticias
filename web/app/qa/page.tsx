@@ -186,12 +186,45 @@ function UserBubble({ content }: { content: string }) {
   );
 }
 
+function CoverageBadge({ confidence }: { confidence?: string }) {
+  if (!confidence) return null;
+  const styles: Record<string, string> = {
+    confident:
+      "bg-emerald-100 text-emerald-900 dark:bg-emerald-900 dark:text-emerald-100",
+    partial:
+      "bg-amber-100 text-amber-900 dark:bg-amber-900 dark:text-amber-100",
+    empty:
+      "bg-stone-200 text-stone-700 dark:bg-stone-800 dark:text-stone-300",
+  };
+  const labels: Record<string, string> = {
+    confident: "✓ Cobertura buena",
+    partial: "△ Cobertura parcial",
+    empty: "○ Sin cobertura",
+  };
+  const cls = styles[confidence] ?? styles.empty;
+  const label = labels[confidence] ?? confidence;
+  return (
+    <span
+      className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}
+    >
+      {label}
+    </span>
+  );
+}
+
 function AssistantBubble({ data }: { data: QAResponse }) {
   const citationsByN = new Map(data.citations.map((c) => [c.n, c]));
 
   return (
     <div className="flex justify-start">
       <div className="max-w-[95%] space-y-4">
+        {/* Coverage badge (CRAG confidence indicator) */}
+        {data.confidence && (
+          <div className="pl-1">
+            <CoverageBadge confidence={data.confidence} />
+          </div>
+        )}
+
         <div className="rounded-2xl rounded-bl-sm bg-stone-100 px-4 py-3 text-sm leading-relaxed text-stone-900 dark:bg-stone-800 dark:text-stone-100">
           {renderAnswerWithRefs(data.answer, citationsByN)}
         </div>

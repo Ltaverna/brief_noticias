@@ -10,6 +10,7 @@ from noticias_api.notifiers.telegram import (
     TelegramError,
     escape_markdown_v2 as esc,
 )
+from noticias_api.qa.crag import EMPTY_ANSWER, evaluate_relevance, filter_chunks
 from noticias_api.qa.hyde import generate_hypothetical
 from noticias_api.qa.memory import append_messages, load_recent_history
 from noticias_api.qa.retrieval import RetrievedChunk, retrieve_chunks
@@ -124,26 +125,58 @@ async def handle_update(
             )
             return
 
-        # 3. Load history
+        # 3. CRAG-lite — evaluate chunk relevance and decide strategy
+        crag_confidence: str = "confident"
+        filtered_chunks = chunks
+
+        if settings.enable_crag:
+            crag = await evaluate_relevance(
+                client,
+                query=text,
+                chunks=chunks,
+                model=settings.crag_model,
+                min_relevant=settings.crag_min_relevant,
+            )
+            crag_confidence = crag.confidence
+            filtered_chunks = filter_chunks(chunks, crag)
+
+            if crag.confidence == "empty":
+                await bot.edit_message_text(
+                    chat_id, placeholder_msg_id, esc(EMPTY_ANSWER)
+                )
+                await append_messages(
+                    session,
+                    conv_id,
+                    text,
+                    EMPTY_ANSWER,
+                    citations=[],
+                    used_citations=[],
+                    hyde_query=hypothetical,
+                    model="crag-empty",
+                )
+                return
+
+        # 4. Load history
         history_msgs = await load_recent_history(
             session, conv_id, max_turns=settings.qa_history_turns
         )
         history = [{"role": m.role, "content": m.content} for m in history_msgs]
 
-        # 4. Synthesize
+        # 5. Synthesize
         result = await synthesize(
             client,
             question=text,
-            chunks=chunks,
+            chunks=filtered_chunks,
             model=settings.chat_model_analysis,
             history=history,
+            confidence_hint=crag_confidence,
         )
 
-        # 5. Send response
-        formatted = format_qa_response(text, result.answer, result.used_citations, chunks)
+        # 6. Send response (formatted against filtered_chunks for correct [N] mapping)
+        formatted = format_qa_response(text, result.answer, result.used_citations, filtered_chunks)
         await bot.edit_message_text(chat_id, placeholder_msg_id, formatted)
 
-        # 6. Persist
+        # 7. Persist
         await append_messages(
             session,
             conv_id,

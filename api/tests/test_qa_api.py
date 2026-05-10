@@ -1,3 +1,4 @@
+import json
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -16,6 +17,49 @@ def _make_fake_openai(embedding=None, chat_content="Según el INDEC, fue del 4,2
     fake_chat = MagicMock()
     fake_chat.choices = [MagicMock(message=MagicMock(content=chat_content))]
     fake_client.chat.completions.create = AsyncMock(return_value=fake_chat)
+    return fake_client
+
+
+def _make_fake_openai_with_crag(
+    embedding=None,
+    crag_verdicts: dict | None = None,
+    chat_content: str = "Según el INDEC, fue del 4,2% [1].",
+):
+    """Return a mock client that returns a structured CRAG verdict JSON first,
+    then a synthesis answer for subsequent calls.
+
+    Call order expected by the QA flow when CRAG+HyDE are enabled:
+      1. HyDE (chat) -> chat_content is returned (irrelevant for HyDE)
+      2. CRAG verdict (chat) -> crag_json
+      3. Synthesis (chat) -> chat_content
+    Since HyDE and synthesis both return chat_content, we use side_effect to
+    return a different response on the CRAG call (call #2 if HyDE is on).
+    """
+    emb = embedding or [1.0] + [0.0] * 1535
+    fake_client = MagicMock()
+    fake_emb = MagicMock()
+    fake_emb.data = [MagicMock(embedding=emb)]
+    fake_client.embeddings.create = AsyncMock(return_value=fake_emb)
+
+    def _chat_resp(content: str):
+        r = MagicMock()
+        r.choices = [MagicMock(message=MagicMock(content=content))]
+        return r
+
+    verdicts = crag_verdicts or {"verdicts": [{"n": 1, "verdict": "relevant"}]}
+    crag_json = json.dumps(verdicts)
+
+    # side_effect: call 1 = HyDE (plain text), call 2 = CRAG (json), call 3+ = synthesis
+    call_count = 0
+
+    async def _side_effect(**kwargs):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 2:  # CRAG verdict call (after HyDE)
+            return _chat_resp(crag_json)
+        return _chat_resp(chat_content)
+
+    fake_client.chat.completions.create = AsyncMock(side_effect=_side_effect)
     return fake_client
 
 
@@ -179,3 +223,85 @@ def test_qa_rejects_long_query(client):
 def test_qa_rejects_conversation_id_too_long(client):
     r = client.post("/qa", json={"query": "valid query here", "conversation_id": "x" * 65})
     assert r.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# CRAG integration tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_crag_confident_path_returns_answer_and_confidence(
+    db_session, client, monkeypatch
+):
+    """When CRAG returns ≥3 relevant verdicts → confidence=confident, full answer."""
+    await _seed_article(db_session)
+
+    # Seed 3 more articles so we have 4 chunks for CRAG to judge
+    src2 = None
+    from noticias_api.db.models import Article as _Art, Cluster as _Cl, Source as _Src
+    now = datetime.now(UTC)
+    cluster2 = _Cl(article_count=1, source_count=1, last_seen_at=now)
+    db_session.add(cluster2)
+    await db_session.commit()
+    for i in range(2, 5):
+        db_session.add(_Art(
+            source_id=1, external_id=f"extra{i}", url=f"https://x/extra{i}",
+            title=f"Extra {i}", content=f"Content {i}",
+            embedding=[1.0] + [0.0] * 1535,
+            published_at=now, cluster_id=cluster2.id,
+        ))
+    await db_session.commit()
+
+    verdicts_payload = {"verdicts": [
+        {"n": 1, "verdict": "relevant"},
+        {"n": 2, "verdict": "relevant"},
+        {"n": 3, "verdict": "relevant"},
+        {"n": 4, "verdict": "irrelevant"},
+    ]}
+    fake_client = _make_fake_openai_with_crag(crag_verdicts=verdicts_payload)
+    monkeypatch.setattr("noticias_api.api.qa.AsyncOpenAI", lambda **kw: fake_client)
+
+    response = client.post("/qa", json={"query": "Cuánto fue la inflación"})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["confidence"] == "confident"
+    assert body["crag_verdicts"] is not None
+    assert "[1]" in body["answer"]
+
+
+@pytest.mark.asyncio
+async def test_crag_empty_path_returns_no_encontre(db_session, client, monkeypatch):
+    """When CRAG returns all irrelevant → confidence=empty, short-circuit answer."""
+    await _seed_article(db_session)
+
+    all_irrelevant = {"verdicts": [{"n": 1, "verdict": "irrelevant"}]}
+
+    emb = [1.0] + [0.0] * 1535
+    fake_client = MagicMock()
+    fake_emb = MagicMock()
+    fake_emb.data = [MagicMock(embedding=emb)]
+    fake_client.embeddings.create = AsyncMock(return_value=fake_emb)
+
+    call_count = 0
+
+    async def _side_effect(**kwargs):
+        nonlocal call_count
+        call_count += 1
+        r = MagicMock()
+        if call_count == 2:  # CRAG call
+            r.choices = [MagicMock(message=MagicMock(content=json.dumps(all_irrelevant)))]
+        else:
+            r.choices = [MagicMock(message=MagicMock(content="hipótesis HyDE"))]
+        return r
+
+    fake_client.chat.completions.create = AsyncMock(side_effect=_side_effect)
+    monkeypatch.setattr("noticias_api.api.qa.AsyncOpenAI", lambda **kw: fake_client)
+
+    response = client.post("/qa", json={"query": "algo que no está en el corpus"})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["confidence"] == "empty"
+    assert "No encontré" in body["answer"]
+    assert body["used_citations"] == []
+    assert body["citations"] == []

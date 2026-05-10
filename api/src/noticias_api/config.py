@@ -68,6 +68,11 @@ class Settings(BaseSettings):
     rerank_initial_k: int = 50
     rerank_top_k: int = 10
 
+    # CRAG-lite — corrective RAG with chunk relevance evaluation
+    enable_crag: bool = True
+    crag_model: str = "gpt-4o-mini"
+    crag_min_relevant: int = 3
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
