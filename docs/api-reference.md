@@ -586,6 +586,207 @@ Retorna el historial de mensajes de una conversación en orden cronológico.
 
 ---
 
+## Authors
+
+### `GET /authors`
+
+Lista autores ordenados por actividad.
+
+**Query params:**
+- `source` (str, opcional): filtrar por slug de fuente (ej: `clarin`).
+- `q` (str, opcional): búsqueda parcial sobre el nombre del autor.
+- `order` (`articles_desc` | `last_seen_desc` | `name_asc`, default `articles_desc`): ordenamiento.
+- `limit` (int, default 50): máximo de resultados.
+
+**Response:** `{authors: AuthorSummary[]}`
+
+---
+
+### `GET /authors/{slug}/stats`
+
+Actividad del autor: totales, distribución por tópico, historial mensual y entidades más mencionadas.
+
+**Path param:** `slug` — slug del autor.
+
+**Response:** `AuthorStats`
+```json
+{
+  "author": {"slug": "juan-perez", "name": "Juan Pérez", "source": "clarin", "is_synthetic": false},
+  "totals": {"article_count": 47, "cluster_count": 23},
+  "by_topic": {"politica": 20, "economia": 15, "otros": 12},
+  "by_month": [{"month": "2026-04", "article_count": 12}],
+  "top_entities": [{"name": "Javier Milei", "kind": "person", "mention_count": 8}]
+}
+```
+
+**Errors:** `404` si el slug no existe.
+
+---
+
+### `GET /authors/{slug}/scorecard`
+
+Métricas de sesgo del autor con comparativa respecto al baseline de su diario.
+
+**Path param:** `slug`
+
+**Response:** `AuthorScorecard`
+```json
+{
+  "article_count": 47,
+  "sufficient_sample": true,
+  "tone": {"neutral": 0.45, "critico": 0.30, "favorable": 0.25},
+  "omission_rate": 0.18,
+  "divergence_score": 2.3,
+  "framing_diversity": 0.61,
+  "vs_source_baseline": {
+    "omission_rate_delta": 0.04,
+    "divergence_score_delta": -0.5
+  }
+}
+```
+
+`sufficient_sample: false` cuando el autor tiene menos de 3 artículos.
+
+**Errors:** `404` si el slug no existe.
+
+---
+
+### `GET /authors/{slug}/articles`
+
+Lista de artículos del autor, ordenados por fecha descendente.
+
+**Path param:** `slug`
+
+**Query params:**
+- `limit` (int, default 20): máximo de resultados.
+
+**Response:** `ArticleSummary[]`
+
+**Errors:** `404` si el slug no existe.
+
+---
+
+### `GET /authors/{slug}/profile`
+
+Perfil cualitativo generado por LLM. Retorna `404` si aún no fue generado.
+
+**Path param:** `slug`
+
+**Response:** `AuthorProfile`
+```json
+{
+  "summary": "Juan Pérez tiende a encuadrar la política económica...",
+  "strengths": ["Precisión factual en notas de economía"],
+  "patterns": ["Tono favorable al gobierno en temas fiscales"],
+  "model": "gpt-4o",
+  "generated_at": "2026-05-09T10:00:00Z"
+}
+```
+
+**Errors:** `404` si el slug no existe o el perfil no fue generado.
+
+---
+
+### `POST /authors/{slug}/profile/regenerate`
+
+Genera o regenera el perfil cualitativo del autor usando GPT-4o.
+
+**Path param:** `slug`
+
+**Response:** `AuthorProfile` (igual que `GET /authors/{slug}/profile`).
+
+**Errors:**
+- `404` si el slug no existe.
+- `400` si el autor tiene menos de 3 artículos.
+
+---
+
+### `GET /authors/{slug}/similar`
+
+Autores con perfil parecido, combinando similitud de centroide (embeddings) y profile_vector (distribución estadística).
+
+**Path param:** `slug`
+
+**Query params:**
+- `weight_topic` (float, default 0.5): peso del profile_vector en la similitud combinada.
+- `weight_profile` (float, default 0.5): peso del centroide de embeddings.
+- `limit` (int, default 10): máximo de resultados.
+
+**Response:** `{similar: [{author: AuthorSummary, score: float}]}`
+
+**Errors:** `404` si el slug no existe.
+
+---
+
+### `POST /authors/compare`
+
+Comparación LLM entre dos autores. Cacheada por `(a_id, b_id, since, until)`. Si no hay clusters en común (`overlap_clusters=0`), retorna un fast-path sin llamar al LLM.
+
+**Body:**
+```json
+{
+  "a": "juan-perez",
+  "b": "maria-garcia",
+  "since": "2026-04-01",
+  "until": "2026-05-01"
+}
+```
+
+`since` y `until` son opcionales (default: últimos 30 días).
+
+**Response:** `AuthorComparison`
+```json
+{
+  "overlap_clusters": 8,
+  "comparison": "Juan Pérez y María García coinciden en cobertura de política exterior pero divergen...",
+  "cached": false,
+  "model": "gpt-4o",
+  "generated_at": "2026-05-09T11:00:00Z"
+}
+```
+
+---
+
+### `GET /authors/compare/clusters`
+
+Lista de clusters que tienen artículos de ambos autores.
+
+**Query params:**
+- `a` (str, requerido): slug del primer autor.
+- `b` (str, requerido): slug del segundo autor.
+
+**Response:** `{clusters: ClusterSummary[]}`
+
+---
+
+### `GET /clusters/{id}/by-author`
+
+Artículos de dos autores en un cluster específico. Útil para mostrar la comparación lado a lado en el detalle de un cluster.
+
+**Path param:** `id` — cluster id.
+
+**Query params:**
+- `a` (str, requerido): slug del primer autor.
+- `b` (str, requerido): slug del segundo autor.
+
+**Response:** `{a: ArticleSummary[], b: ArticleSummary[]}`
+
+**Errors:** `404` si el cluster no existe.
+
+---
+
+### `GET /sources/{slug}/byline-coverage`
+
+Porcentaje de notas con firma real vs sintética (`"Redacción <Diario>"`), agrupado por mes.
+
+**Path param:** `slug` — slug de la fuente.
+
+**Response:** `{months: [{month: str, real: int, synthetic: int, pct_real: float}]}`
+
+**Errors:** `404` si la fuente no existe.
+
+---
+
 ## Analytics
 
 ### `GET /analytics/tone-trends`

@@ -35,6 +35,7 @@ Los diarios argentinos cubren los mismos hechos con encuadres, énfasis y omisio
 - **Entidades**: explorar cómo se cubrió una persona, organización o lugar a lo largo del tiempo
 - **Q&A conversacional**: preguntas multi-turno con memoria de conversación, HyDE + reranking + CRAG-lite, badge de cobertura y citas numeradas
 - **Analytics**: ver tendencias de tono por diario y bias scorecard por entidad
+- **Autores**: perfil por autor (notas, clusters, tono, tasa de omisión, divergencia, framing diversity), perfil cualitativo opcional con IA, comparador entre autores, sugerencias de autores parecidos basado en centroide de embeddings + perfil estadístico
 - **Suscripciones Telegram**: recibir digest filtrado y alertas cuando una historia cruza N fuentes
 - **Bot Telegram**: preguntas libres en lenguaje natural con memoria persistente por chat
 - **PWA instalable**: agregar a la pantalla de inicio en iOS y Android
