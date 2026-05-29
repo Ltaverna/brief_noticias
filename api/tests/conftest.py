@@ -1,3 +1,4 @@
+import os
 from collections.abc import AsyncIterator, Iterator
 
 import pytest
@@ -14,10 +15,10 @@ from noticias_api.main import app
 from noticias_api.db import session as session_module
 
 postgresql_proc = factories.postgresql_noproc(
-    host="localhost",
-    port=5432,
-    user="noticias",
-    password="noticias",
+    host=os.environ.get("POSTGRES_TEST_HOST", "localhost"),
+    port=int(os.environ.get("POSTGRES_TEST_PORT", "5432")),
+    user=os.environ.get("POSTGRES_TEST_USER", "noticias"),
+    password=os.environ.get("POSTGRES_TEST_PASSWORD", "noticias"),
 )
 postgresql = factories.postgresql("postgresql_proc", dbname="test_noticias")
 

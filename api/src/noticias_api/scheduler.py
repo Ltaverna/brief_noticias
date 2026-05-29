@@ -78,13 +78,20 @@ def setup_scheduler(settings: Settings) -> AsyncIOScheduler:
             replace_existing=True,
         )
 
-    # Start telegram poller if mode=polling
+    # Start telegram poller if mode=polling — requires a running event loop.
+    # When called outside one (e.g. unit tests), skip silently; the FastAPI
+    # lifespan ensures a loop is running in production.
     if settings.telegram_bot_mode == "polling" and settings.enable_telegram:
-        from noticias_api.notifiers.poller import run_poller  # avoid circular import at module level
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            logger.debug("setup_scheduler: no running event loop, skipping poller start")
+        else:
+            from noticias_api.notifiers.poller import run_poller  # avoid circular import at module level
 
-        _poller_stop = asyncio.Event()
-        _poller_task = asyncio.create_task(run_poller(settings, stop_event=_poller_stop))
-        logger.info("Telegram polling task started")
+            _poller_stop = asyncio.Event()
+            _poller_task = asyncio.create_task(run_poller(settings, stop_event=_poller_stop))
+            logger.info("Telegram polling task started")
 
     return scheduler
 

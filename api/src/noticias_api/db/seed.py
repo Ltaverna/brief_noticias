@@ -10,6 +10,7 @@ SEED_SOURCES: list[dict[str, str]] = [
         "editorial_group": "mainstream",
         "rss_url": "https://www.lanacion.com.ar/arc/outboundfeeds/rss/?outputType=xml",
         "base_url": "https://www.lanacion.com.ar",
+        "color": "#0f172a",
     },
     {
         "slug": "clarin",
@@ -17,6 +18,7 @@ SEED_SOURCES: list[dict[str, str]] = [
         "editorial_group": "mainstream",
         "rss_url": "https://www.clarin.com/rss/lo-ultimo/",
         "base_url": "https://www.clarin.com",
+        "color": "#1d4ed8",
     },
     {
         "slug": "infobae",
@@ -24,6 +26,7 @@ SEED_SOURCES: list[dict[str, str]] = [
         "editorial_group": "mainstream",
         "rss_url": "https://www.infobae.com/arc/outboundfeeds/rss/",
         "base_url": "https://www.infobae.com",
+        "color": "#0ea5e9",
     },
     {
         "slug": "pagina-12",
@@ -31,6 +34,7 @@ SEED_SOURCES: list[dict[str, str]] = [
         "editorial_group": "critico",
         "rss_url": "https://www.pagina12.com.ar/arc/outboundfeeds/rss/portada/",
         "base_url": "https://www.pagina12.com.ar",
+        "color": "#dc2626",
     },
     {
         "slug": "tiempo-argentino",
@@ -38,6 +42,7 @@ SEED_SOURCES: list[dict[str, str]] = [
         "editorial_group": "critico",
         "rss_url": "https://www.tiempoar.com.ar/feed/",
         "base_url": "https://www.tiempoar.com.ar",
+        "color": "#f59e0b",
     },
     {
         "slug": "el-destape",
@@ -45,6 +50,7 @@ SEED_SOURCES: list[dict[str, str]] = [
         "editorial_group": "critico",
         "rss_url": "https://www.eldestapeweb.com/rss/portada.xml",
         "base_url": "https://www.eldestapeweb.com",
+        "color": "#7c3aed",
     },
     {
         "slug": "ambito",
@@ -52,6 +58,7 @@ SEED_SOURCES: list[dict[str, str]] = [
         "editorial_group": "economico",
         "rss_url": "https://www.ambito.com/rss/pages/home.xml",
         "base_url": "https://www.ambito.com",
+        "color": "#16a34a",
     },
     {
         "slug": "el-cronista",
@@ -59,6 +66,7 @@ SEED_SOURCES: list[dict[str, str]] = [
         "editorial_group": "economico",
         "rss_url": "https://www.cronista.com/arc/outboundfeeds/news/",
         "base_url": "https://www.cronista.com",
+        "color": "#0d9488",
     },
     {
         "slug": "bae",
@@ -66,6 +74,7 @@ SEED_SOURCES: list[dict[str, str]] = [
         "editorial_group": "economico",
         "rss_url": "https://www.baenegocios.com/files/rss/ultimas-noticias.xml",
         "base_url": "https://www.baenegocios.com",
+        "color": "#475569",
     },
 ]
 

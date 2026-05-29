@@ -8,6 +8,7 @@ export const NAV_LINKS: NavLink[] = [
   { href: "/qa", label: "Preguntar" },
   { href: "/analytics", label: "Análisis" },
   { href: "/entities", label: "Entidades" },
+  { href: "/authors", label: "Autores" },
   { href: "/sagas", label: "Sagas" },
   { href: "/historial", label: "Historial" },
   { href: "/fuentes", label: "Fuentes" },

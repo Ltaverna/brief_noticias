@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { api } from "@/lib/api";
+import { AuthorChip } from "@/components/AuthorChip";
 import { ClusterNotes } from "@/components/ClusterNotes";
 import { DivergenceTable } from "@/components/DivergenceTable";
 import { EntityChip } from "@/components/EntityChip";
@@ -118,21 +119,35 @@ export default async function ClusterPage({
           <h2 className="text-xl font-serif font-semibold">Artículos fuente</h2>
           <ul className="mt-3 space-y-2 text-sm">
             {cluster.articles.map((a) => (
-              <li key={a.id} className="flex flex-wrap items-center gap-2">
-                <SourceChip
-                  slug={a.source.slug}
-                  group={a.source.editorial_group}
-                />
-                <a
-                  href={a.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:underline"
-                >
-                  {a.title}
-                </a>
-                {!a.has_full_text && (
-                  <span className="text-xs text-stone-500">(solo título/resumen)</span>
+              <li key={a.id} className="space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <SourceChip
+                    slug={a.source.slug}
+                    group={a.source.editorial_group}
+                  />
+                  <a
+                    href={a.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:underline"
+                  >
+                    {a.title}
+                  </a>
+                  {!a.has_full_text && (
+                    <span className="text-xs text-stone-500">(solo título/resumen)</span>
+                  )}
+                </div>
+                {a.authors && a.authors.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {a.authors.map((author) => (
+                      <AuthorChip
+                        key={author.slug}
+                        name={author.name}
+                        slug={author.slug}
+                        isSynthetic={author.is_synthetic}
+                      />
+                    ))}
+                  </div>
                 )}
               </li>
             ))}

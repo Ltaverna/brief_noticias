@@ -7,7 +7,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from noticias_api.config import Settings, get_settings
-from noticias_api.db.models import Analysis, Article, Cluster, ClusterEntity, Entity, Saga, Source
+from noticias_api.db.models import Analysis, Article, ArticleAuthor, Author, Cluster, ClusterEntity, Entity, Saga, Source
 from noticias_api.db.session import get_session
 from noticias_api.pipeline.runner import PipelineConfig, _analyze_top_clusters
 
@@ -20,6 +20,12 @@ class SourceRef(BaseModel):
     editorial_group: str
 
 
+class AuthorRef(BaseModel):
+    name: str
+    slug: str
+    is_synthetic: bool
+
+
 class ArticleOut(BaseModel):
     id: int
     source: SourceRef
@@ -28,6 +34,7 @@ class ArticleOut(BaseModel):
     summary: str | None
     has_full_text: bool
     published_at: datetime | None
+    authors: list[AuthorRef] = []
 
 
 class AnalysisOut(BaseModel):
@@ -84,6 +91,20 @@ async def get_cluster(
         )
     ).all()
 
+    # Fetch authors for all articles in this cluster in one query
+    auth_rows = (await session.execute(
+        select(Article.id, Author.name, Author.canonical, Author.is_synthetic, ArticleAuthor.position)
+        .join(ArticleAuthor, ArticleAuthor.article_id == Article.id)
+        .join(Author, Author.id == ArticleAuthor.author_id)
+        .where(Article.cluster_id == cluster_id)
+        .order_by(ArticleAuthor.position)
+    )).all()
+    by_article: dict[int, list[AuthorRef]] = {}
+    for art_id, name, canon, is_syn, _pos in auth_rows:
+        by_article.setdefault(art_id, []).append(
+            AuthorRef(name=name, slug=canon.replace(" ", "-"), is_synthetic=is_syn)
+        )
+
     article_outs: list[ArticleOut] = []
     for art in articles:
         src = await session.get(Source, art.source_id)
@@ -98,6 +119,7 @@ async def get_cluster(
                 summary=art.summary,
                 has_full_text=art.has_full_text,
                 published_at=art.published_at,
+                authors=by_article.get(art.id, []),
             )
         )
 
@@ -195,3 +217,40 @@ async def regenerate_analysis(
         prompt_version=new_analysis.prompt_version,
         generated_at=new_analysis.generated_at,
     )
+
+
+@router.get("/clusters/{cluster_id}/by-author")
+async def cluster_by_author(
+    cluster_id: int,
+    a: str,
+    b: str,
+    session: AsyncSession = Depends(get_session),
+):
+    from noticias_api.api.authors import _author_by_slug
+    from noticias_api.db.models import Article, ArticleAuthor
+
+    author_a = await _author_by_slug(session, a)
+    author_b = await _author_by_slug(session, b)
+
+    arts_a = (await session.scalars(
+        select(Article)
+        .join(ArticleAuthor, ArticleAuthor.article_id == Article.id)
+        .where(Article.cluster_id == cluster_id, ArticleAuthor.author_id == author_a.id)
+    )).all()
+    arts_b = (await session.scalars(
+        select(Article)
+        .join(ArticleAuthor, ArticleAuthor.article_id == Article.id)
+        .where(Article.cluster_id == cluster_id, ArticleAuthor.author_id == author_b.id)
+    )).all()
+
+    def shape(arts):
+        return [
+            {"id": x.id, "title": x.title, "url": x.url,
+             "published_at": x.published_at.isoformat() if x.published_at else None}
+            for x in arts
+        ]
+    return {
+        "cluster_id": cluster_id,
+        "a": {"slug": a, "name": author_a.name, "articles": shape(arts_a)},
+        "b": {"slug": b, "name": author_b.name, "articles": shape(arts_b)},
+    }

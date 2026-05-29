@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { ClusterSummary, EditorialGroup, SourceListItem } from "@/lib/types";
 import { useReadState } from "./ReadStateProvider";
+import { AuthorChip } from "./AuthorChip";
 import { SourceChip } from "./SourceChip";
 import { TOPIC_LABELS } from "./TopicChips";
 

@@ -5,6 +5,7 @@ from fastapi import FastAPI
 
 from noticias_api.api import (
     analytics,
+    authors,
     briefings,
     clusters,
     entities,
@@ -39,6 +40,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Noticias API", version="0.1.0", lifespan=lifespan)
 app.include_router(analytics.router)
+app.include_router(authors.router)
 app.include_router(sources.router)
 app.include_router(runs.router)
 app.include_router(briefings.router)

@@ -55,6 +55,7 @@ class RunStats:
     sagas_active: int = 0
     entities_extracted: int = 0
     topics_classified: int = 0
+    authors_vectorized: int = 0
     errors_per_source: dict[str, int] = field(default_factory=dict)
 
     def dump(self) -> dict:
@@ -71,6 +72,7 @@ class RunStats:
             "sagas_active": self.sagas_active,
             "entities_extracted": self.entities_extracted,
             "topics_classified": self.topics_classified,
+            "authors_vectorized": self.authors_vectorized,
             "errors_per_source": self.errors_per_source,
         }
 
@@ -155,6 +157,10 @@ async def run_pipeline(
                 )
                 stats.topics_classified = topic_stats.get("classified", 0)
 
+            from noticias_api.pipeline.author_vectors import update_author_vectors
+            av_stats = await update_author_vectors(session)
+            stats.authors_vectorized = av_stats.get("updated", 0)
+
         final_status = "partial" if stats.errors_per_source else "success"
         await session.execute(
             update(Run)
@@ -195,6 +201,8 @@ async def _fetch_source_items(
 async def _extract_for_articles(
     session: AsyncSession, http: httpx.AsyncClient, cfg: PipelineConfig
 ) -> dict:
+    from noticias_api.pipeline.persist import persist_authors_from_html
+
     pending = (
         await session.scalars(
             select(Article).where(Article.content.is_(None)).limit(200)
@@ -205,6 +213,10 @@ async def _extract_for_articles(
         result = await extract_content(http, article.url)
         article.content = result.content
         article.has_full_text = result.has_full_text
+        if result.authors:
+            await persist_authors_from_html(
+                session, article=article, authors_from_html=result.authors
+            )
         updated += 1
     await session.commit()
     return {"updated": updated}

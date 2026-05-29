@@ -525,6 +525,43 @@ El `prompt_version` se almacena en cada `Analysis`. Al comparar análisis genera
 
 ---
 
+## Autores
+
+### Modelo de datos
+
+Cinco tablas nuevas extienden el esquema:
+
+- **`authors`**: autor canónico (slug, nombre, fuente, `is_synthetic`, `article_count`, `centroid` VECTOR(1536), `centroid_updated_at`).
+- **`article_authors`**: M:N entre artículos y autores. Columna `position` (0 = autor principal, 1+ = coautor).
+- **`author_aliases`**: alias manuales para resolver homónimos o variantes de nombre ("J. Pérez" → "Juan Pérez"). Clave `(alias, source_id)` única.
+- **`author_profiles`**: perfil cualitativo generado por LLM (on-demand). Campos: `summary`, `strengths`, `patterns`, `model`, `generated_at`.
+- **`author_comparisons`**: comparación LLM entre dos autores, cacheada por `(author_a_id, author_b_id, since, until)`.
+
+La coautoría se registra vía `article_authors.position`. Los alias permiten normalizar sin alterar los datos originales del byline.
+
+### Extracción de bylines
+
+1. **RSS** (`dc:creator`): fuente prioritaria.
+2. **Fallback HTML**: `trafilatura.bare_extraction` sobre el HTML de la nota.
+3. Si ninguna fuente produce nombres: se crea un autor sintético `"Redacción <Diario>"` con `is_synthetic=True`.
+
+Los autores sintéticos no participan en comparaciones LLM ni en el comparador de perfiles.
+
+### Vectores
+
+- **Centroide** (1536-dim): `AVG(article.embedding)` sobre todos los artículos del autor. Se recomputa al final del pipeline batch. Se salta si `centroid_updated_at` es menor a 23 horas (evita recómputos innecesarios en corridas frecuentes).
+- **profile_vector** (20-dim): distribución normalizada por tópico (7 dims) + 4 métricas de sesgo (tono, omission_rate, divergence_score, framing_diversity) + actividad mensual binned (9 dims). Se usa para el comparador ponderado junto con el centroide.
+
+### Agregaciones
+
+El módulo `api/_aggregations.py` expone funciones reutilizables parametrizando el "group by" sobre `Analysis.by_source` JSONB. Las mismas funciones sirven para vistas por autor y por diario, evitando duplicar lógica.
+
+### Honestidad estadística
+
+Se requiere **n ≥ 3 artículos** para mostrar métricas con la etiqueta de "muestra suficiente". Con menos artículos las métricas se calculan pero se marcan como preliminares en la UI. Los perfiles IA (M3) y las comparaciones LLM (M4) son siempre **on-demand** — nunca se generan en batch para controlar costos.
+
+---
+
 ## Caching e idempotencia
 
 | Mecanismo | Qué protege |

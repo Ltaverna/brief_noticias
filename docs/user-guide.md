@@ -351,6 +351,45 @@ La URL `/compare?a={id}&b={id}` abre una vista lado a lado de dos clusters. Úti
 
 ---
 
+## Autores
+
+La página `/authors` (accesible desde el link **Autores** en el header) lista los periodistas y columnistas indexados con sus estadísticas de cobertura.
+
+### Navegar a un perfil
+
+Desde `/authors` podés buscar por nombre, filtrar por diario y ordenar por número de artículos, actividad reciente o nombre. Al hacer clic en un autor se abre `/authors/{slug}` con su perfil completo.
+
+### Perfil de autor: 4 tabs
+
+| Tab | Contenido |
+|-----|-----------|
+| **Resumen** | Métricas generales: artículos, clusters, tópicos más frecuentes, historial mensual, entidades más mencionadas. |
+| **Sesgo** | Scorecard: tono promedio, tasa de omisión, divergence score, framing diversity, comparativa vs baseline del diario. |
+| **Perfil IA** | Descripción cualitativa generada por GPT-4o (on-demand). Si no fue generado, hay un botón para solicitarlo. |
+| **Notas** | Lista de artículos del autor con links a los clusters correspondientes. |
+
+### Comparar dos autores
+
+En cualquier perfil de autor hay un botón **"Comparar con…"** que abre un selector de segundo autor. El comparador (`/authors/compare?a=…&b=…`) muestra:
+
+- Lista de clusters en que ambos publicaron.
+- Comparación LLM de estilos y enfoques (cacheada, generada on-demand).
+- Vista lado a lado de sus artículos dentro de cada cluster compartido.
+
+### Métricas: umbral de muestra
+
+Las métricas del tab Sesgo requieren **n ≥ 3 artículos** para mostrarse con la etiqueta "muestra suficiente". Con menos notas las métricas se calculan igual pero se marcan como preliminares: interpretarlas con cautela.
+
+### Autores sintéticos (Redacción)
+
+Cuando un artículo no tiene firma identificable en el RSS ni en el HTML de la nota, el sistema le asigna un autor sintético con el formato `"Redacción <Diario>"` (ej: `"Redacción Clarín"`). Estos autores:
+
+- Aparecen en `/authors` con la etiqueta "Sintético".
+- No participan en el comparador LLM ni en el cálculo de autores similares.
+- Permiten ver qué porcentaje de las notas de un diario no tiene firma real (vía `GET /sources/{slug}/byline-coverage`).
+
+---
+
 ## Ver también
 
 - [Arquitectura](architecture.md) — cómo funciona el pipeline por dentro
