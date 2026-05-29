@@ -367,6 +367,27 @@ async def regenerate_author_profile(
     return {"profile": result.model_dump(), "n_sample": n, "model": model}
 
 
+@router.get("/authors/{slug}/articles")
+async def author_articles(
+    slug: str,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    session: AsyncSession = Depends(get_session),
+):
+    author = await _author_by_slug(session, slug)
+    arts = (await session.execute(
+        select(Article.id, Article.title, Article.url, Article.cluster_id, Article.published_at)
+        .join(ArticleAuthor, ArticleAuthor.article_id == Article.id)
+        .where(ArticleAuthor.author_id == author.id)
+        .order_by(Article.published_at.desc().nullslast())
+        .limit(limit)
+    )).all()
+    return {"articles": [
+        {"id": i, "title": t, "url": u, "cluster_id": c,
+         "published_at": p.isoformat() if p else None}
+        for i, t, u, c, p in arts
+    ]}
+
+
 class CompareRequest(BaseModel):
     a: str
     b: str
