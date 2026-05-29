@@ -61,3 +61,13 @@ def test_author_scorecard_with_no_analysis(client, seeded):
     data = r.json()
     assert data["n"] == 0
     assert data["tone"]["avg"] is None
+
+
+def test_similar_excludes_authors_without_centroid(client, seeded):
+    a = seeded["author"]
+    slug = a.canonical.replace(" ", "-")
+    r = client.get(f"/authors/{slug}/similar")
+    assert r.status_code == 200
+    # The seeded author has no centroid → response returns empty list with a reason
+    data = r.json()
+    assert data["similar"] == []

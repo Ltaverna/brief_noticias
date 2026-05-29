@@ -243,3 +243,45 @@ async def author_scorecard(
         "framing_diversity": s["framing_diversity"],
         "vs_source_baseline": baseline,
     }
+
+
+@router.get("/authors/{slug}/similar")
+async def author_similar(
+    slug: str,
+    weight_topic: float = 0.5,
+    weight_profile: float = 0.5,
+    limit: Annotated[int, Query(ge=1, le=50)] = 10,
+    session: AsyncSession = Depends(get_session),
+):
+    author = await _author_by_slug(session, slug)
+    if author.centroid is None or author.profile_vector is None:
+        return {"similar": [], "reason": "author has no vectors yet"}
+
+    others = (
+        await session.execute(
+            select(
+                Author, Source.slug,
+                Author.centroid.cosine_distance(author.centroid).label("d_topic"),
+                Author.profile_vector.cosine_distance(author.profile_vector).label("d_profile"),
+            )
+            .join(Source, Source.id == Author.source_id, isouter=True)
+            .where(Author.id != author.id)
+            .where(Author.centroid.isnot(None))
+            .where(Author.profile_vector.isnot(None))
+        )
+    ).all()
+
+    scored = []
+    for other, src_slug, d_topic, d_profile in others:
+        sim_topic = 1.0 - float(d_topic)
+        sim_profile = 1.0 - float(d_profile)
+        score = weight_topic * sim_topic + weight_profile * sim_profile
+        scored.append({
+            "slug": slug_from_canonical(other.canonical),
+            "name": other.name,
+            "source": src_slug,
+            "score": round(score, 4),
+            "components": {"topic": round(sim_topic, 4), "profile": round(sim_profile, 4)},
+        })
+    scored.sort(key=lambda x: x["score"], reverse=True)
+    return {"similar": scored[:limit]}
