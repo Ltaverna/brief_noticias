@@ -24,6 +24,12 @@ export interface Briefing {
   clusters: ClusterSummary[];
 }
 
+export interface AuthorRef {
+  name: string;
+  slug: string;
+  is_synthetic: boolean;
+}
+
 export interface ArticleDetail {
   id: number;
   source: SourceRef;
@@ -32,6 +38,7 @@ export interface ArticleDetail {
   summary: string | null;
   has_full_text: boolean;
   published_at: string | null;
+  authors?: AuthorRef[];
 }
 
 export interface BySourceAnalysis {
