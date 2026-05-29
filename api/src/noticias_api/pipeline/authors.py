@@ -4,6 +4,7 @@ import unicodedata
 from datetime import UTC, datetime
 
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from noticias_api.db.models import Author, AuthorAlias, Source
@@ -88,14 +89,34 @@ async def resolve_author(
         await session.flush()
         return existing
 
-    # 3. Crear
-    author = Author(
-        name=name, canonical=canon, source_id=source_id,
-        is_synthetic=False,
+    # 3. Crear con ON CONFLICT DO NOTHING para tolerar races con otros
+    # procesos que insertan el mismo (canonical, source_id) en paralelo.
+    stmt = (
+        pg_insert(Author)
+        .values(
+            name=name, canonical=canon, source_id=source_id,
+            is_synthetic=False,
+        )
+        .on_conflict_do_nothing(constraint="uq_authors_canon_source")
+        .returning(Author.id)
     )
-    session.add(author)
-    await session.flush()
-    return author
+    inserted_id = await session.scalar(stmt)
+    if inserted_id is not None:
+        return await session.get(Author, inserted_id)
+
+    # Otro proceso ganó la carrera: releemos y devolvemos
+    other = await session.scalar(
+        select(Author).where(
+            Author.canonical == canon, Author.source_id == source_id
+        )
+    )
+    if other:
+        other.last_seen_at = datetime.now(UTC)
+        return other
+    raise RuntimeError(
+        f"resolve_author: failed to insert and could not find existing "
+        f"({canon!r}, source_id={source_id})"
+    )
 
 
 async def ensure_synthetic(session: AsyncSession, *, source: Source) -> Author:
@@ -112,10 +133,28 @@ async def ensure_synthetic(session: AsyncSession, *, source: Source) -> Author:
     if existing:
         existing.last_seen_at = datetime.now(UTC)
         return existing
-    author = Author(
-        name=name, canonical=canon, source_id=source.id,
-        is_synthetic=True,
+    # Insert con ON CONFLICT para tolerar races
+    stmt = (
+        pg_insert(Author)
+        .values(
+            name=name, canonical=canon, source_id=source.id,
+            is_synthetic=True,
+        )
+        .on_conflict_do_nothing(constraint="uq_authors_canon_source")
+        .returning(Author.id)
     )
-    session.add(author)
-    await session.flush()
-    return author
+    inserted_id = await session.scalar(stmt)
+    if inserted_id is not None:
+        return await session.get(Author, inserted_id)
+    # Otro proceso ganó la carrera
+    other = await session.scalar(
+        select(Author).where(
+            Author.canonical == canon, Author.source_id == source.id
+        )
+    )
+    if other:
+        other.last_seen_at = datetime.now(UTC)
+        return other
+    raise RuntimeError(
+        f"ensure_synthetic: race lost and could not find existing for source {source.slug}"
+    )
