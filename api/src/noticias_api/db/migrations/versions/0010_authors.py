@@ -4,14 +4,15 @@ Revision ID: 0010_authors
 Revises: 0009_qa_messages
 Create Date: 2026-05-28
 """
+from collections.abc import Sequence
 from alembic import op
 import sqlalchemy as sa
 from pgvector.sqlalchemy import Vector
 
-revision = "0010_authors"
-down_revision = "0009_qa_messages"
-branch_labels = None
-depends_on = None
+revision: str = "0010_authors"
+down_revision: str | None = "0009_qa_messages"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -30,7 +31,7 @@ def upgrade() -> None:
         sa.Column("centroid_updated_at", sa.DateTime(timezone=True), nullable=True),
         sa.UniqueConstraint("canonical", "source_id", name="uq_authors_canon_source"),
     )
-    op.create_index("ix_authors_canonical", "authors", ["canonical"])
+    op.execute("CREATE INDEX ix_authors_canonical ON authors (canonical)")
 
     op.create_table(
         "article_authors",
@@ -38,14 +39,15 @@ def upgrade() -> None:
         sa.Column("author_id", sa.BigInteger, sa.ForeignKey("authors.id", ondelete="CASCADE"), primary_key=True),
         sa.Column("position", sa.SmallInteger, nullable=False, server_default="0"),
     )
-    op.create_index("ix_article_authors_author", "article_authors", ["author_id", "article_id"])
+    op.execute("CREATE INDEX ix_article_authors_author ON article_authors (author_id, article_id)")
 
     op.create_table(
         "author_aliases",
         sa.Column("id", sa.BigInteger, primary_key=True),
-        sa.Column("alias_canonical", sa.Text, nullable=False, unique=True),
+        sa.Column("alias_canonical", sa.Text, nullable=False),
         sa.Column("author_id", sa.BigInteger, sa.ForeignKey("authors.id", ondelete="CASCADE"), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.UniqueConstraint("alias_canonical", name="uq_author_aliases_alias_canonical"),
     )
 
     op.create_table(
@@ -75,7 +77,7 @@ def downgrade() -> None:
     op.drop_table("author_comparisons")
     op.drop_table("author_profiles")
     op.drop_table("author_aliases")
-    op.drop_index("ix_article_authors_author", table_name="article_authors")
+    op.execute("DROP INDEX IF EXISTS ix_article_authors_author")
     op.drop_table("article_authors")
-    op.drop_index("ix_authors_canonical", table_name="authors")
+    op.execute("DROP INDEX IF EXISTS ix_authors_canonical")
     op.drop_table("authors")
