@@ -3,12 +3,10 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-interface NavLink {
-  href: string;
-  label: string;
-}
+import { NAV_LINKS, type NavLink } from "@/lib/nav";
 
-export function MobileNav({ links }: { links: NavLink[] }) {
+export function MobileNav({ links }: { links?: NavLink[] }) {
+  const items = links && links.length > 0 ? links : NAV_LINKS;
   const [open, setOpen] = useState(false);
 
   // Close drawer on route change (escape key too)
@@ -37,7 +35,7 @@ export function MobileNav({ links }: { links: NavLink[] }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="md:hidden min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md hover:bg-stone-100 dark:hover:bg-stone-800"
+        className="lg:hidden min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md hover:bg-stone-100 dark:hover:bg-stone-800"
         aria-label="Abrir menú"
         aria-expanded={open}
       >
@@ -58,26 +56,30 @@ export function MobileNav({ links }: { links: NavLink[] }) {
       </button>
 
       {open && (
-        <div
-          className="fixed inset-0 z-50 md:hidden"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Menú de navegación"
-        >
-          {/* Backdrop */}
+        <>
+          {/* Backdrop — own fixed element, no parent stacking issues */}
           <div
-            className="absolute inset-0 bg-black/50"
+            className="fixed inset-0 z-40 bg-black/60 lg:hidden"
             onClick={() => setOpen(false)}
+            aria-hidden="true"
           />
 
-          {/* Drawer */}
-          <nav className="absolute right-0 top-0 h-full w-72 bg-white shadow-xl dark:bg-stone-950 flex flex-col">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200 dark:border-stone-800">
-              <span className="text-lg font-serif font-bold">Menú</span>
+          {/* Drawer — own fixed element with explicit dvh height */}
+          <nav
+            role="dialog"
+            aria-modal="true"
+            aria-label="Menú de navegación"
+            style={{ height: "100dvh", maxHeight: "100vh" }}
+            className="fixed right-0 top-0 z-50 flex w-72 max-w-[85vw] flex-col overflow-y-auto bg-white shadow-2xl lg:hidden dark:bg-stone-950"
+          >
+            <div className="flex shrink-0 items-center justify-between border-b border-stone-200 bg-white px-6 py-4 dark:border-stone-800 dark:bg-stone-950">
+              <span className="text-lg font-serif font-bold text-stone-900 dark:text-stone-100">
+                Menú
+              </span>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md hover:bg-stone-100 dark:hover:bg-stone-800"
+                className="flex h-11 w-11 items-center justify-center rounded-md text-stone-700 hover:bg-stone-100 dark:text-stone-200 dark:hover:bg-stone-800"
                 aria-label="Cerrar menú"
               >
                 <svg
@@ -96,13 +98,14 @@ export function MobileNav({ links }: { links: NavLink[] }) {
               </button>
             </div>
 
-            <ul className="flex-1 overflow-y-auto py-4">
-              {links.map((l) => (
+            <ul className="grow py-2">
+              {items.map((l) => (
                 <li key={l.href}>
                   <Link
                     href={l.href}
                     onClick={() => setOpen(false)}
-                    className="flex items-center px-6 py-3 text-base hover:bg-stone-100 dark:hover:bg-stone-900 min-h-[44px]"
+                    style={{ minHeight: 44, color: "inherit" }}
+                    className="flex items-center px-6 py-3 text-base font-medium text-stone-900 hover:bg-stone-100 dark:text-stone-100 dark:hover:bg-stone-900"
                   >
                     {l.label}
                   </Link>
@@ -110,7 +113,7 @@ export function MobileNav({ links }: { links: NavLink[] }) {
               ))}
             </ul>
           </nav>
-        </div>
+        </>
       )}
     </>
   );

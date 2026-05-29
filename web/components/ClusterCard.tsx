@@ -18,14 +18,17 @@ export function ClusterCard({ cluster, sourcesById }: Props) {
 
   return (
     <div
-      className={`relative rounded-lg border bg-white transition dark:bg-stone-900 ${
+      className={`group relative rounded-xl border bg-white shadow-sm transition-all duration-200 dark:bg-stone-900/60 dark:shadow-none dark:ring-1 dark:ring-stone-800 ${
         read
-          ? "border-stone-200 opacity-60 dark:border-stone-800"
-          : "border-stone-200 hover:border-stone-400 dark:border-stone-800 dark:hover:border-stone-600"
+          ? "border-stone-200 opacity-60 dark:border-stone-800/60"
+          : "border-stone-200 hover:-translate-y-0.5 hover:border-stone-300 hover:shadow-md dark:border-stone-800 dark:hover:border-stone-700 dark:hover:bg-stone-900 dark:hover:ring-stone-700"
       }`}
     >
-      <Link href={`/cluster/${cluster.id}`} className="block p-5 pr-12">
-        <h2 className="text-xl font-serif leading-snug">
+      <Link
+        href={`/cluster/${cluster.id}`}
+        className="block cursor-pointer p-5 pr-14"
+      >
+        <h2 className="font-serif text-xl font-semibold leading-snug tracking-tight">
           {cluster.headline ?? "Análisis pendiente"}
         </h2>
         <p className="mt-2 text-sm text-stone-600 dark:text-stone-400">
@@ -56,9 +59,37 @@ export function ClusterCard({ cluster, sourcesById }: Props) {
         type="button"
         onClick={() => toggle(cluster.id)}
         title={read ? "Marcar como no leído" : "Marcar como leído"}
-        className="absolute right-3 top-3 rounded-full p-1.5 text-stone-400 hover:bg-stone-100 hover:text-stone-700 dark:hover:bg-stone-800 dark:hover:text-stone-300"
+        aria-label={read ? "Marcar como no leído" : "Marcar como leído"}
+        aria-pressed={read}
+        className="absolute right-2 top-2 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-stone-400 transition-colors duration-150 hover:bg-stone-100 hover:text-stone-700 focus:outline-none focus:ring-2 focus:ring-stone-300 dark:hover:bg-stone-800 dark:hover:text-stone-200 dark:focus:ring-stone-600"
       >
-        {read ? "✓" : "○"}
+        {read ? (
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        ) : (
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="9" />
+          </svg>
+        )}
       </button>
     </div>
   );

@@ -95,8 +95,15 @@ export const api = {
       { cache: "no-store" },
     );
   },
-  getSubscriptions: (): Promise<Subscription[]> =>
-    get("/subscriptions", { cache: "no-store" }),
+  getSubscriptions: async (): Promise<Subscription[]> => {
+    const url =
+      typeof window === "undefined"
+        ? `${baseUrl()}/subscriptions`
+        : "/api/subscriptions";
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) throw new Error(`API /subscriptions failed: ${res.status}`);
+    return res.json();
+  },
   addSubscription: async (body: {
     kind: "entity" | "topic" | "all";
     value?: string;
