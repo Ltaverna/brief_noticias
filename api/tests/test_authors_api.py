@@ -71,3 +71,13 @@ def test_similar_excludes_authors_without_centroid(client, seeded):
     # The seeded author has no centroid → response returns empty list with a reason
     data = r.json()
     assert data["similar"] == []
+
+
+def test_profile_regenerate_blocked_when_sample_too_small(client, seeded):
+    a = seeded["author"]
+    slug = a.canonical.replace(" ", "-")
+    # seeded fixture has 1 article and 0 analyses → n_sample = 0
+    r = client.post(f"/authors/{slug}/profile/regenerate")
+    assert r.status_code == 400
+    detail = r.json()["detail"].lower()
+    assert "muestra" in detail or "sample" in detail

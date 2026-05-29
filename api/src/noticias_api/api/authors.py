@@ -1,16 +1,20 @@
-from datetime import date
+from datetime import date, datetime, UTC
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from openai import AsyncOpenAI
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from noticias_api.config import get_settings
 from noticias_api.db.models import (
-    Article, ArticleAuthor, Author, Cluster, ClusterEntity, Entity, Source,
+    Analysis, Article, ArticleAuthor, Author, AuthorProfile,
+    Cluster, ClusterEntity, Entity, Source,
 )
 from noticias_api.db.session import get_session
 from noticias_api.api._aggregations import stats_by_author, stats_by_source_slug
+from noticias_api.qa.author_profile import generate_profile
 
 router = APIRouter(tags=["authors"])
 
@@ -285,3 +289,78 @@ async def author_similar(
         })
     scored.sort(key=lambda x: x["score"], reverse=True)
     return {"similar": scored[:limit]}
+
+
+MIN_SAMPLE_FOR_PROFILE = 3
+
+
+@router.get("/authors/{slug}/profile")
+async def get_author_profile(slug: str, session: AsyncSession = Depends(get_session)):
+    author = await _author_by_slug(session, slug)
+    profile = await session.get(AuthorProfile, author.id)
+    if not profile:
+        raise HTTPException(404, "Profile not yet generated")
+    return {
+        "profile": profile.profile_json,
+        "model": profile.model,
+        "n_sample": profile.n_sample,
+        "generated_at": profile.generated_at.isoformat(),
+    }
+
+
+@router.post("/authors/{slug}/profile/regenerate")
+async def regenerate_author_profile(
+    slug: str, session: AsyncSession = Depends(get_session),
+):
+    author = await _author_by_slug(session, slug)
+    source = await session.get(Source, author.source_id) if author.source_id else None
+    if not source:
+        raise HTTPException(400, "Author has no source — cannot generate profile")
+
+    rows = (
+        await session.execute(
+            select(Analysis)
+            .join(Cluster, Cluster.id == Analysis.cluster_id)
+            .join(Article, Article.cluster_id == Cluster.id)
+            .join(ArticleAuthor, ArticleAuthor.article_id == Article.id)
+            .where(ArticleAuthor.author_id == author.id)
+            .order_by(Analysis.generated_at.desc())
+            .distinct()
+            .limit(30)
+        )
+    ).scalars().all()
+
+    n = len(rows)
+    if n < MIN_SAMPLE_FOR_PROFILE:
+        raise HTTPException(
+            400,
+            f"Muestra insuficiente ({n}/{MIN_SAMPLE_FOR_PROFILE}). "
+            "El autor necesita más análisis antes de generar perfil.",
+        )
+
+    samples = []
+    for a in rows:
+        bs = a.by_source or {}
+        info = bs.get(source.slug) if isinstance(bs, dict) else None
+        framing = info.get("framing") if isinstance(info, dict) else ""
+        samples.append({"headline": a.headline or "", "framing": framing or ""})
+
+    settings = get_settings()
+    client = AsyncOpenAI(api_key=settings.openai_api_key)
+    model = settings.chat_model_analysis
+
+    result = await generate_profile(client, model=model, samples=samples, n_sample=n)
+
+    existing = await session.get(AuthorProfile, author.id)
+    if existing:
+        existing.profile_json = result.model_dump()
+        existing.model = model
+        existing.n_sample = n
+        existing.generated_at = datetime.now(UTC)
+    else:
+        session.add(AuthorProfile(
+            author_id=author.id, profile_json=result.model_dump(),
+            model=model, n_sample=n,
+        ))
+    await session.commit()
+    return {"profile": result.model_dump(), "n_sample": n, "model": model}
