@@ -85,11 +85,17 @@ async def _compute_profile_vector(
     if total_articles == 0:
         return None
 
-    # Placeholders — replaced in Task 10 with real aggregations
-    tone = 0.0
-    omission = 0.0
-    divergence = 0.0
-    framing_diversity = 0.0
+    from noticias_api.api._aggregations import stats_by_author
+    stats = await stats_by_author(session, author_id)
+    tone = stats.get("tone_avg") or 0.0
+    omission = stats.get("omission_rate") or 0.0
+    divergence = stats.get("divergence_score") or 0.0
+    framing_diversity = stats.get("framing_diversity") or 0.0
+    # Clamp a [-1, 1]
+    tone = max(-1.0, min(1.0, tone))
+    omission = max(-1.0, min(1.0, omission))
+    divergence = max(-1.0, min(1.0, divergence))
+    framing_diversity = max(-1.0, min(1.0, framing_diversity))
 
     # Activity: últimos 6 meses, cuenta normalizada
     now = datetime.now(UTC)
