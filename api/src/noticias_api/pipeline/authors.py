@@ -52,3 +52,71 @@ def parse_byline(raw: str | None) -> list[str]:
         seen.add(cleaned)
         out.append(cleaned)
     return out
+
+
+from datetime import UTC, datetime
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from noticias_api.db.models import Author, AuthorAlias, Source
+
+
+async def resolve_author(
+    session: AsyncSession, *, name: str, source_id: int
+) -> Author:
+    """Resuelve un nombre crudo a Author: alias → existente → crea."""
+    canon = canonicalize_author(name)
+    # 1. Alias?
+    alias = await session.scalar(
+        select(AuthorAlias).where(AuthorAlias.alias_canonical == canon)
+    )
+    if alias:
+        author = await session.get(Author, alias.author_id)
+        if author:
+            author.last_seen_at = datetime.now(UTC)
+            return author
+
+    # 2. Existente con mismo (canonical, source_id)?
+    existing = await session.scalar(
+        select(Author).where(
+            Author.canonical == canon, Author.source_id == source_id
+        )
+    )
+    if existing:
+        existing.last_seen_at = datetime.now(UTC)
+        if len(name) > len(existing.name):
+            existing.name = name
+        return existing
+
+    # 3. Crear
+    author = Author(
+        name=name, canonical=canon, source_id=source_id,
+        is_synthetic=False,
+    )
+    session.add(author)
+    await session.flush()
+    return author
+
+
+async def ensure_synthetic(session: AsyncSession, *, source: Source) -> Author:
+    """Idempotente: 'Redacción <source.name>' como autor sintético."""
+    name = f"Redacción {source.name}"
+    canon = canonicalize_author(name)
+    existing = await session.scalar(
+        select(Author).where(
+            Author.canonical == canon,
+            Author.source_id == source.id,
+            Author.is_synthetic.is_(True),
+        )
+    )
+    if existing:
+        existing.last_seen_at = datetime.now(UTC)
+        return existing
+    author = Author(
+        name=name, canonical=canon, source_id=source.id,
+        is_synthetic=True,
+    )
+    session.add(author)
+    await session.flush()
+    return author
