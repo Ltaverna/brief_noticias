@@ -473,6 +473,55 @@ async def compare_authors_endpoint(
     }
 
 
+@router.get("/authors/{slug}/radar")
+async def author_radar(slug: str, session: AsyncSession = Depends(get_session)):
+    author = await _author_by_slug(session, slug)
+    source = await session.get(Source, author.source_id) if author.source_id else None
+
+    # 1. Volume: percentile within source
+    if author.source_id:
+        p95 = await session.scalar(
+            select(func.percentile_cont(0.95).within_group(Author.article_count.asc()))
+            .where(Author.source_id == author.source_id)
+        ) or 1.0
+    else:
+        p95 = max(author.article_count or 1, 1)
+    volume = min(1.0, (author.article_count or 0) / max(p95, 1.0))
+
+    # 2-5: stats
+    s = await stats_by_author(session, author.id)
+    tone_raw = s["tone_avg"] or 0.0
+    tone = (tone_raw + 1) / 2  # [-1, 1] → [0, 1]
+    omission_inv = 1.0 - (s["omission_rate"] or 0.0)
+    divergence = s["divergence_score"] or 0.0
+    framing_diversity = s["framing_diversity"] or 0.0
+
+    # 6: politics share
+    pol = await session.scalar(
+        select(func.count(Article.id))
+        .join(Cluster, Cluster.id == Article.cluster_id)
+        .join(ArticleAuthor, ArticleAuthor.article_id == Article.id)
+        .where(ArticleAuthor.author_id == author.id)
+        .where(Cluster.topic == "politica")
+    ) or 0
+    politics_share = (pol / author.article_count) if author.article_count else 0.0
+
+    return {
+        "author": {"slug": slug_from_canonical(author.canonical), "name": author.name},
+        "source": {"slug": source.slug if source else None,
+                   "color": source.color if source else "#94a3b8"},
+        "n": s["n"],
+        "dimensions": [
+            {"key": "volume", "label": "Volumen", "value": round(min(1.0, max(0.0, volume)), 3)},
+            {"key": "tone", "label": "Tono", "value": round(min(1.0, max(0.0, tone)), 3)},
+            {"key": "no_omission", "label": "Cobertura completa", "value": round(min(1.0, max(0.0, omission_inv)), 3)},
+            {"key": "divergence", "label": "Divergencia", "value": round(min(1.0, max(0.0, divergence)), 3)},
+            {"key": "framing", "label": "Diversidad framing", "value": round(min(1.0, max(0.0, framing_diversity)), 3)},
+            {"key": "politics", "label": "Foco política", "value": round(min(1.0, max(0.0, politics_share)), 3)},
+        ],
+    }
+
+
 @router.get("/authors/compare/clusters")
 async def shared_clusters(
     a: str, b: str,

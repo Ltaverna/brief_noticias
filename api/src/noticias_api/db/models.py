@@ -14,6 +14,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -34,6 +35,9 @@ class Source(Base):
     rss_url: Mapped[str] = mapped_column(Text, nullable=False)
     base_url: Mapped[str] = mapped_column(Text, nullable=False)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    color: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="#94a3b8", server_default=text("'#94a3b8'")
+    )
 
     articles: Mapped[list["Article"]] = relationship(back_populates="source")
 

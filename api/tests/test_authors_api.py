@@ -100,3 +100,15 @@ def test_compare_no_overlap(client, two_authors):
     assert r.status_code == 200
     data = r.json()
     assert data["overlap_clusters"] == 0
+
+
+def test_author_radar_returns_6_dimensions(client, seeded):
+    a = seeded["author"]
+    slug = a.canonical.replace(" ", "-")
+    r = client.get(f"/authors/{slug}/radar")
+    assert r.status_code == 200
+    data = r.json()
+    assert len(data["dimensions"]) == 6
+    for d in data["dimensions"]:
+        assert 0.0 <= d["value"] <= 1.0
+    assert data["source"]["color"].startswith("#")

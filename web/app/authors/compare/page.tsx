@@ -5,9 +5,12 @@ import Link from "next/link";
 import {
   compareAuthors,
   listAuthors,
+  getAuthorRadar,
   type CompareResponse,
   type AuthorListItem,
+  type AuthorRadar,
 } from "@/lib/authors";
+import { AuthorRadarChart } from "@/components/AuthorRadarChart";
 
 export default function ComparePage() {
   const sp = useSearchParams();
@@ -17,6 +20,8 @@ export default function ComparePage() {
   const [loading, setLoading] = useState(false);
   const [bOptions, setBOptions] = useState<AuthorListItem[]>([]);
   const [bSelect, setBSelect] = useState(b);
+  const [radarA, setRadarA] = useState<AuthorRadar | null>(null);
+  const [radarB, setRadarB] = useState<AuthorRadar | null>(null);
 
   useEffect(() => {
     listAuthors({ order: "articles_desc", limit: 100 }).then(r => setBOptions(r.authors));
@@ -28,6 +33,9 @@ export default function ComparePage() {
     try {
       const r = await compareAuthors(a, bSelect);
       setData(r);
+      Promise.all([getAuthorRadar(a), getAuthorRadar(bSelect)])
+        .then(([rA, rB]) => { setRadarA(rA); setRadarB(rB); })
+        .catch(() => { /* radar is non-critical */ });
     } finally {
       setLoading(false);
     }
@@ -70,6 +78,21 @@ export default function ComparePage() {
             <div className="text-xs text-slate-500 uppercase mb-2">Síntesis</div>
             <p className="text-sm">{data.sintesis}</p>
           </section>
+
+          {radarA && radarB && (
+            <section>
+              <h2 className="text-xs text-slate-500 uppercase mb-2">Radar comparativo</h2>
+              <AuthorRadarChart
+                series={[
+                  { label: radarA.author.name, color: radarA.source.color,
+                    values: radarA.dimensions.map(d => d.value), n: radarA.n },
+                  { label: radarB.author.name, color: radarB.source.color,
+                    values: radarB.dimensions.map(d => d.value), n: radarB.n },
+                ]}
+                labels={radarA.dimensions.map(d => d.label)}
+              />
+            </section>
+          )}
 
           {data.coincidencias && data.coincidencias.length > 0 && (
             <section className="border-l-2 border-green-500 pl-4">

@@ -1,15 +1,18 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getSimilarAuthors, type AuthorStats, type SimilarAuthor } from "@/lib/authors";
+import { getSimilarAuthors, getAuthorRadar, type AuthorStats, type SimilarAuthor, type AuthorRadar } from "@/lib/authors";
+import { AuthorRadarChart } from "./AuthorRadarChart";
 
 type Props = { slug: string; stats: AuthorStats };
 
 export function AuthorStatsSummary({ slug, stats }: Props) {
   const [similar, setSimilar] = useState<SimilarAuthor[] | null>(null);
+  const [radar, setRadar] = useState<AuthorRadar | null>(null);
 
   useEffect(() => {
     getSimilarAuthors(slug).then(r => setSimilar(r.similar)).catch(() => setSimilar([]));
+    getAuthorRadar(slug).then(setRadar).catch(() => setRadar(null));
   }, [slug]);
 
   const insufficient = stats.totals.articles < 3;
@@ -21,6 +24,21 @@ export function AuthorStatsSummary({ slug, stats }: Props) {
         <KPI label="Clusters" value={stats.totals.clusters} />
         <KPI label="Coautorías" value={stats.totals.coauthored} />
       </div>
+
+      {radar && (
+        <section>
+          <h2 className="text-sm font-semibold text-slate-500 uppercase mb-2">Radar</h2>
+          <AuthorRadarChart
+            series={[{
+              label: radar.author.name,
+              color: radar.source.color,
+              values: radar.dimensions.map(d => d.value),
+              n: radar.n,
+            }]}
+            labels={radar.dimensions.map(d => d.label)}
+          />
+        </section>
+      )}
 
       {insufficient && (
         <p className="text-sm text-amber-600 dark:text-amber-400">
