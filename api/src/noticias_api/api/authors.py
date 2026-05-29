@@ -471,3 +471,27 @@ async def compare_authors_endpoint(
         "cached": False,
         **result.model_dump(),
     }
+
+
+@router.get("/authors/compare/clusters")
+async def shared_clusters(
+    a: str, b: str,
+    session: AsyncSession = Depends(get_session),
+):
+    author_a = await _author_by_slug(session, a)
+    author_b = await _author_by_slug(session, b)
+    rows = (await session.execute(
+        select(Cluster.id, Analysis.headline)
+        .join(Article, Article.cluster_id == Cluster.id)
+        .join(ArticleAuthor, ArticleAuthor.article_id == Article.id)
+        .join(Analysis, Analysis.cluster_id == Cluster.id, isouter=True)
+        .where(ArticleAuthor.author_id == author_a.id)
+        .where(Cluster.id.in_(
+            select(Article.cluster_id)
+            .join(ArticleAuthor, ArticleAuthor.article_id == Article.id)
+            .where(ArticleAuthor.author_id == author_b.id)
+        ))
+        .distinct()
+        .order_by(Cluster.last_seen_at.desc())
+    )).all()
+    return {"clusters": [{"id": cid, "headline": h} for cid, h in rows]}
