@@ -275,3 +275,99 @@ class QaMessage(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+
+
+class Author(Base):
+    __tablename__ = "authors"
+    __table_args__ = (
+        UniqueConstraint("canonical", "source_id", name="uq_authors_canon_source"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    canonical: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    source_id: Mapped[int | None] = mapped_column(
+        ForeignKey("sources.id"), nullable=True
+    )
+    is_synthetic: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false"
+    )
+    first_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    last_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    article_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    centroid: Mapped[list[float] | None] = mapped_column(Vector(EMBEDDING_DIM), nullable=True)
+    profile_vector: Mapped[list[float] | None] = mapped_column(Vector(20), nullable=True)
+    centroid_updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+
+class ArticleAuthor(Base):
+    __tablename__ = "article_authors"
+
+    article_id: Mapped[int] = mapped_column(
+        ForeignKey("articles.id", ondelete="CASCADE"), primary_key=True
+    )
+    author_id: Mapped[int] = mapped_column(
+        ForeignKey("authors.id", ondelete="CASCADE"), primary_key=True
+    )
+    position: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+
+
+class AuthorAlias(Base):
+    __tablename__ = "author_aliases"
+    __table_args__ = (
+        UniqueConstraint("alias_canonical", name="uq_author_aliases_alias_canonical"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    alias_canonical: Mapped[str] = mapped_column(Text, nullable=False)
+    author_id: Mapped[int] = mapped_column(
+        ForeignKey("authors.id", ondelete="CASCADE"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class AuthorProfile(Base):
+    __tablename__ = "author_profiles"
+
+    author_id: Mapped[int] = mapped_column(
+        ForeignKey("authors.id", ondelete="CASCADE"), primary_key=True
+    )
+    profile_json: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    model: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    n_sample: Mapped[int] = mapped_column(Integer, nullable=False)
+    generated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class AuthorComparison(Base):
+    __tablename__ = "author_comparisons"
+    __table_args__ = (
+        UniqueConstraint(
+            "author_a_id", "author_b_id", "since", "until",
+            name="uq_author_compare",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    author_a_id: Mapped[int] = mapped_column(
+        ForeignKey("authors.id", ondelete="CASCADE"), nullable=False
+    )
+    author_b_id: Mapped[int] = mapped_column(
+        ForeignKey("authors.id", ondelete="CASCADE"), nullable=False
+    )
+    comparison_json: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    model: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    since: Mapped[date | None] = mapped_column(Date, nullable=True)
+    until: Mapped[date | None] = mapped_column(Date, nullable=True)
+    generated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
