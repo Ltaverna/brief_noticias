@@ -1,10 +1,10 @@
 import logging
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from noticias_api.db.models import Article, ArticleAuthor, Source
+from noticias_api.db.models import Article, ArticleAuthor, Author, Source
 from noticias_api.pipeline.authors import ensure_synthetic, resolve_author
 from noticias_api.pipeline.fetch import FetchedItem
 
@@ -96,14 +96,13 @@ async def persist_authors_from_html(
     )
     # Only replace if the only thing there is the synthetic
     if existing:
-        from noticias_api.db.models import Author
         author = await session.get(Author, existing.author_id)
         if not author or not author.is_synthetic:
             return
-        from sqlalchemy import delete
         await session.execute(
             delete(ArticleAuthor).where(ArticleAuthor.article_id == article.id)
         )
+        await session.flush()
 
     if not authors_from_html:
         return
