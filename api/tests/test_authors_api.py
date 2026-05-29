@@ -51,3 +51,13 @@ def test_byline_coverage(client, seeded):
     assert r.status_code == 200
     data = r.json()
     assert "monthly" in data
+
+
+def test_author_scorecard_with_no_analysis(client, seeded):
+    a = seeded["author"]
+    slug = a.canonical.replace(" ", "-")
+    r = client.get(f"/authors/{slug}/scorecard")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["n"] == 0
+    assert data["tone"]["avg"] is None

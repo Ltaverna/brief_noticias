@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -9,6 +10,7 @@ from noticias_api.db.models import (
     Article, ArticleAuthor, Author, Cluster, ClusterEntity, Entity, Source,
 )
 from noticias_api.db.session import get_session
+from noticias_api.api._aggregations import stats_by_author, stats_by_source_slug
 
 router = APIRouter(tags=["authors"])
 
@@ -208,3 +210,36 @@ async def byline_coverage(slug: str, session: AsyncSession = Depends(get_session
         v["coverage"] = round(v["byline_real"] / total, 3) if total else None
 
     return {"source": slug, "monthly": list(by_month.values())}
+
+
+@router.get("/authors/{slug}/scorecard")
+async def author_scorecard(
+    slug: str,
+    since: date | None = None,
+    until: date | None = None,
+    session: AsyncSession = Depends(get_session),
+):
+    author = await _author_by_slug(session, slug)
+    s = await stats_by_author(session, author.id, since=since, until=until)
+
+    baseline = None
+    if author.source_id:
+        src = await session.get(Source, author.source_id)
+        if src:
+            base = await stats_by_source_slug(session, src.slug, since=since, until=until)
+            if base["n"] > 0 and s["n"] > 0:
+                baseline = {
+                    "tone_delta": (s["tone_avg"] or 0) - (base["tone_avg"] or 0),
+                    "omission_delta": (s["omission_rate"] or 0) - (base["omission_rate"] or 0),
+                    "source": src.slug,
+                    "n_baseline": base["n"],
+                }
+
+    return {
+        "n": s["n"],
+        "tone": {"avg": s["tone_avg"], "distribution": s["tone_distribution"]},
+        "omission_rate": s["omission_rate"],
+        "divergence_score": s["divergence_score"],
+        "framing_diversity": s["framing_diversity"],
+        "vs_source_baseline": baseline,
+    }
