@@ -34,6 +34,7 @@ async def extract_content(
             include_comments=False,
             include_tables=False,
             no_fallback=False,
+            with_metadata=True,
         )
     except Exception as exc:
         logger.warning("trafilatura.bare_extraction failed for %s: %s", url, exc)
