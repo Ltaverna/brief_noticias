@@ -9,12 +9,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from noticias_api.config import get_settings
 from noticias_api.db.models import (
-    Analysis, Article, ArticleAuthor, Author, AuthorProfile,
+    Analysis, Article, ArticleAuthor, Author, AuthorComparison, AuthorProfile,
     Cluster, ClusterEntity, Entity, Source,
 )
 from noticias_api.db.session import get_session
 from noticias_api.api._aggregations import stats_by_author, stats_by_source_slug
 from noticias_api.qa.author_profile import generate_profile
+from noticias_api.qa.author_compare import compare_authors
 
 router = APIRouter(tags=["authors"])
 
@@ -364,3 +365,88 @@ async def regenerate_author_profile(
         ))
     await session.commit()
     return {"profile": result.model_dump(), "n_sample": n, "model": model}
+
+
+class CompareRequest(BaseModel):
+    a: str
+    b: str
+    since: date | None = None
+    until: date | None = None
+
+
+@router.post("/authors/compare")
+async def compare_authors_endpoint(
+    body: CompareRequest, session: AsyncSession = Depends(get_session),
+):
+    author_a = await _author_by_slug(session, body.a)
+    author_b = await _author_by_slug(session, body.b)
+    if author_a.id == author_b.id:
+        raise HTTPException(400, "Cannot compare an author with themselves")
+
+    # Canonical order for cache key
+    a_id, b_id = sorted([author_a.id, author_b.id])
+
+    overlap_clusters = await session.scalar(
+        select(func.count(func.distinct(Article.cluster_id)))
+        .join(ArticleAuthor, ArticleAuthor.article_id == Article.id)
+        .where(ArticleAuthor.author_id == author_a.id)
+        .where(Article.cluster_id.in_(
+            select(Article.cluster_id)
+            .join(ArticleAuthor, ArticleAuthor.article_id == Article.id)
+            .where(ArticleAuthor.author_id == author_b.id)
+        ))
+    )
+
+    cached = await session.scalar(
+        select(AuthorComparison).where(
+            AuthorComparison.author_a_id == a_id,
+            AuthorComparison.author_b_id == b_id,
+            AuthorComparison.since == body.since,
+            AuthorComparison.until == body.until,
+        )
+    )
+
+    stats_a = await stats_by_author(session, author_a.id, since=body.since, until=body.until)
+    stats_b = await stats_by_author(session, author_b.id, since=body.since, until=body.until)
+
+    if overlap_clusters == 0:
+        return {
+            "a": {"slug": body.a, "name": author_a.name},
+            "b": {"slug": body.b, "name": author_b.name},
+            "overlap_clusters": 0,
+            "sintesis": "Los dos autores no tienen cobertura compartida en el periodo seleccionado.",
+            "stats_a": stats_a, "stats_b": stats_b,
+        }
+
+    if cached:
+        return {
+            "a": {"slug": body.a, "name": author_a.name},
+            "b": {"slug": body.b, "name": author_b.name},
+            "overlap_clusters": int(overlap_clusters or 0),
+            "cached": True,
+            **cached.comparison_json,
+        }
+
+    payload = {
+        "autor_a": {"nombre": author_a.name, "stats": stats_a},
+        "autor_b": {"nombre": author_b.name, "stats": stats_b},
+        "overlap_clusters": int(overlap_clusters or 0),
+    }
+    settings = get_settings()
+    client = AsyncOpenAI(api_key=settings.openai_api_key)
+    model = settings.chat_model_analysis
+    result = await compare_authors(client, model=model, payload=payload)
+
+    session.add(AuthorComparison(
+        author_a_id=a_id, author_b_id=b_id,
+        comparison_json=result.model_dump(),
+        model=model, since=body.since, until=body.until,
+    ))
+    await session.commit()
+    return {
+        "a": {"slug": body.a, "name": author_a.name},
+        "b": {"slug": body.b, "name": author_b.name},
+        "overlap_clusters": int(overlap_clusters or 0),
+        "cached": False,
+        **result.model_dump(),
+    }

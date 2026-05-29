@@ -81,3 +81,22 @@ def test_profile_regenerate_blocked_when_sample_too_small(client, seeded):
     assert r.status_code == 400
     detail = r.json()["detail"].lower()
     assert "muestra" in detail or "sample" in detail
+
+
+@pytest.fixture
+async def two_authors(db_session, seeded):
+    other = Author(name="María López", canonical="maria lopez",
+                   source_id=seeded["source"].id)
+    db_session.add(other)
+    await db_session.commit()
+    await db_session.refresh(other)
+    return {"a": seeded["author"], "b": other, "source": seeded["source"]}
+
+
+def test_compare_no_overlap(client, two_authors):
+    a_slug = two_authors["a"].canonical.replace(" ", "-")
+    b_slug = two_authors["b"].canonical.replace(" ", "-")
+    r = client.post("/authors/compare", json={"a": a_slug, "b": b_slug})
+    assert r.status_code == 200
+    data = r.json()
+    assert data["overlap_clusters"] == 0

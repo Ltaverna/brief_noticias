@@ -195,3 +195,40 @@ async def regenerate_analysis(
         prompt_version=new_analysis.prompt_version,
         generated_at=new_analysis.generated_at,
     )
+
+
+@router.get("/clusters/{cluster_id}/by-author")
+async def cluster_by_author(
+    cluster_id: int,
+    a: str,
+    b: str,
+    session: AsyncSession = Depends(get_session),
+):
+    from noticias_api.api.authors import _author_by_slug
+    from noticias_api.db.models import Article, ArticleAuthor
+
+    author_a = await _author_by_slug(session, a)
+    author_b = await _author_by_slug(session, b)
+
+    arts_a = (await session.scalars(
+        select(Article)
+        .join(ArticleAuthor, ArticleAuthor.article_id == Article.id)
+        .where(Article.cluster_id == cluster_id, ArticleAuthor.author_id == author_a.id)
+    )).all()
+    arts_b = (await session.scalars(
+        select(Article)
+        .join(ArticleAuthor, ArticleAuthor.article_id == Article.id)
+        .where(Article.cluster_id == cluster_id, ArticleAuthor.author_id == author_b.id)
+    )).all()
+
+    def shape(arts):
+        return [
+            {"id": x.id, "title": x.title, "url": x.url,
+             "published_at": x.published_at.isoformat() if x.published_at else None}
+            for x in arts
+        ]
+    return {
+        "cluster_id": cluster_id,
+        "a": {"slug": a, "name": author_a.name, "articles": shape(arts_a)},
+        "b": {"slug": b, "name": author_b.name, "articles": shape(arts_b)},
+    }
