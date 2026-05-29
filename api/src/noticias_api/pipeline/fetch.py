@@ -1,10 +1,12 @@
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from time import mktime
 
 import feedparser
 import httpx
+
+from noticias_api.pipeline.authors import parse_byline
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +18,7 @@ class FetchedItem:
     title: str
     summary: str | None
     published_at: datetime | None
+    authors: list[str] = field(default_factory=list)
 
 
 def parse_feed(xml: str, since: datetime | None = None) -> list[FetchedItem]:
@@ -33,6 +36,12 @@ def parse_feed(xml: str, since: datetime | None = None) -> list[FetchedItem]:
             published_at = datetime.fromtimestamp(mktime(entry.published_parsed))
         if since and published_at and published_at < since.replace(tzinfo=None):
             continue
+        raw_author = entry.get("author") or entry.get("dc_creator") or ""
+        if not raw_author and entry.get("authors"):
+            raw_author = ", ".join(
+                a.get("name", "") for a in entry.authors if a.get("name")
+            )
+        authors = parse_byline(raw_author)
         items.append(
             FetchedItem(
                 external_id=external_id,
@@ -40,6 +49,7 @@ def parse_feed(xml: str, since: datetime | None = None) -> list[FetchedItem]:
                 title=title.strip(),
                 summary=summary.strip() if summary else None,
                 published_at=published_at,
+                authors=authors,
             )
         )
     return items
