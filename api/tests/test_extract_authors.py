@@ -43,3 +43,23 @@ async def test_extract_no_authors_when_metadata_empty():
         result = await extract_content(http, "http://x")
 
     assert result.authors == []
+
+
+@pytest.mark.asyncio
+async def test_extract_short_text_still_returns_authors():
+    http = MagicMock()
+    response = MagicMock()
+    response.text = "<html></html>"
+    response.raise_for_status = MagicMock()
+    http.get = AsyncMock(return_value=response)
+
+    fake_metadata = MagicMock()
+    fake_metadata.text = "x" * 50  # below MIN_CONTENT_LENGTH
+    fake_metadata.author = "Juan Pérez"
+
+    with patch("noticias_api.pipeline.extract.trafilatura.bare_extraction",
+               return_value=fake_metadata):
+        result = await extract_content(http, "http://x")
+
+    assert result.has_full_text is False
+    assert result.authors == ["Juan Pérez"]
