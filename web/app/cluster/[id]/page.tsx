@@ -145,6 +145,7 @@ export default async function ClusterPage({
                         name={author.name}
                         slug={author.slug}
                         isSynthetic={author.is_synthetic}
+                        kind={author.kind}
                       />
                     ))}
                   </div>

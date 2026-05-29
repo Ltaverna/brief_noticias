@@ -35,6 +35,7 @@ class AuthorListItem(BaseModel):
     slug: str
     source_slug: str | None
     is_synthetic: bool
+    kind: str
     article_count: int
 
 
@@ -46,6 +47,7 @@ class AuthorList(BaseModel):
 async def list_authors(
     source: str | None = None,
     q: str | None = None,
+    kind: Annotated[str | None, Query(pattern="^(person|newsroom|editorial|agency)$")] = None,
     order: Annotated[str, Query(pattern="^(articles_desc|last_seen_desc|name_asc)$")] = "articles_desc",
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     session: AsyncSession = Depends(get_session),
@@ -55,6 +57,8 @@ async def list_authors(
         stmt = stmt.where(Source.slug == source)
     if q:
         stmt = stmt.where(Author.canonical.ilike(f"%{q.lower()}%"))
+    if kind:
+        stmt = stmt.where(Author.kind == kind)
     if order == "articles_desc":
         stmt = stmt.order_by(Author.article_count.desc())
     elif order == "last_seen_desc":
@@ -68,6 +72,7 @@ async def list_authors(
             id=a.id, name=a.name, canonical=a.canonical,
             slug=slug_from_canonical(a.canonical),
             source_slug=src_slug, is_synthetic=a.is_synthetic,
+            kind=a.kind,
             article_count=a.article_count or 0,
         )
         for a, src_slug in rows
@@ -167,6 +172,7 @@ async def author_stats(slug: str, session: AsyncSession = Depends(get_session)):
             "slug": slug_from_canonical(author.canonical),
             "source": source.slug if source else None,
             "is_synthetic": author.is_synthetic,
+            "kind": author.kind,
         },
         "totals": {
             "articles": int(t.articles or 0),

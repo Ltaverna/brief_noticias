@@ -28,6 +28,7 @@ export interface AuthorRef {
   name: string;
   slug: string;
   is_synthetic: boolean;
+  kind?: string;
 }
 
 export interface ArticleDetail {

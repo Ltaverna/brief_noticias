@@ -296,6 +296,9 @@ class Author(Base):
     is_synthetic: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default="false"
     )
+    kind: Mapped[str] = mapped_column(
+        String(16), default="person", server_default="person", nullable=False
+    )
     first_seen_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

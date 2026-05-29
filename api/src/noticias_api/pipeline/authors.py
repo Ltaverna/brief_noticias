@@ -13,6 +13,32 @@ GENERIC_BYLINES: frozenset[str] = frozenset({
     "redaccion", "redacción", "agencia", "staff", "editorial", "n/a",
 })
 
+# Agencias internacionales y nacionales. La detección es por canonical:
+# tanto el match exacto como cuando el nombre empieza por una de estas
+# (ej "AFP" o "AFP, Reuters" canonicaliza a "afp" o "afp reuters").
+KNOWN_AGENCIES: frozenset[str] = frozenset({
+    "reuters", "ap", "afp", "telam", "efe", "dpa", "bloomberg", "ansa",
+    "associated press",
+})
+
+AUTHOR_KINDS: tuple[str, ...] = ("person", "newsroom", "editorial", "agency")
+
+
+def detect_kind(name: str) -> str:
+    """Clasifica un byline en {person, newsroom, editorial, agency}.
+
+    Solo distingue agency vs person aquí. Newsroom y editorial se setean
+    explícitamente al crear el sintético (ver ensure_newsroom / ensure_editorial).
+    """
+    canon = canonicalize_author(name)
+    if canon in KNOWN_AGENCIES:
+        return "agency"
+    # Nombre empieza por una agencia conocida ("AFP corresponsal en Roma")
+    first_word = canon.split(" ", 1)[0] if canon else ""
+    if first_word in KNOWN_AGENCIES:
+        return "agency"
+    return "person"
+
 # Substrings (en forma canonicalizada — lowercase sin acentos sin puntuación)
 # que indican que el "byline" es en realidad un fragmento de UI o un alias de
 # redacción anónima. Cualquier nombre que contenga alguno de estos se descarta.
@@ -133,11 +159,13 @@ async def resolve_author(
 
     # 3. Crear con ON CONFLICT DO NOTHING para tolerar races con otros
     # procesos que insertan el mismo (canonical, source_id) en paralelo.
+    kind = detect_kind(name)
     stmt = (
         pg_insert(Author)
         .values(
             name=name, canonical=canon, source_id=source_id,
-            is_synthetic=False,
+            is_synthetic=(kind == "agency"),
+            kind=kind,
         )
         .on_conflict_do_nothing(constraint="uq_authors_canon_source")
         .returning(Author.id)
@@ -161,26 +189,30 @@ async def resolve_author(
     )
 
 
-async def ensure_synthetic(session: AsyncSession, *, source: Source) -> Author:
-    """Idempotente: 'Redacción <source.name>' como autor sintético."""
-    name = f"Redacción {source.name}"
+async def _ensure_synthetic_kind(
+    session: AsyncSession, *, source: Source, name: str, kind: str
+) -> Author:
+    """Helper: idempotente, crea o devuelve un autor sintético del diario con kind dado."""
     canon = canonicalize_author(name)
     existing = await session.scalar(
         select(Author).where(
             Author.canonical == canon,
             Author.source_id == source.id,
-            Author.is_synthetic.is_(True),
         )
     )
     if existing:
         existing.last_seen_at = datetime.now(UTC)
+        # Migrar kind si todavía no estaba seteado (autores creados antes de la
+        # introducción de kind quedan con 'person' por defecto)
+        if existing.kind != kind:
+            existing.kind = kind
+            existing.is_synthetic = True
         return existing
-    # Insert con ON CONFLICT para tolerar races
     stmt = (
         pg_insert(Author)
         .values(
             name=name, canonical=canon, source_id=source.id,
-            is_synthetic=True,
+            is_synthetic=True, kind=kind,
         )
         .on_conflict_do_nothing(constraint="uq_authors_canon_source")
         .returning(Author.id)
@@ -188,7 +220,6 @@ async def ensure_synthetic(session: AsyncSession, *, source: Source) -> Author:
     inserted_id = await session.scalar(stmt)
     if inserted_id is not None:
         return await session.get(Author, inserted_id)
-    # Otro proceso ganó la carrera
     other = await session.scalar(
         select(Author).where(
             Author.canonical == canon, Author.source_id == source.id
@@ -198,5 +229,23 @@ async def ensure_synthetic(session: AsyncSession, *, source: Source) -> Author:
         other.last_seen_at = datetime.now(UTC)
         return other
     raise RuntimeError(
-        f"ensure_synthetic: race lost and could not find existing for source {source.slug}"
+        f"_ensure_synthetic_kind({kind}): race lost and could not find existing "
+        f"for source {source.slug}"
+    )
+
+
+async def ensure_synthetic(session: AsyncSession, *, source: Source) -> Author:
+    """Idempotente: 'Redacción <source.name>' como autor sintético newsroom.
+
+    Mantenido para compatibilidad con código que ya lo importa.
+    """
+    return await _ensure_synthetic_kind(
+        session, source=source, name=f"Redacción {source.name}", kind="newsroom"
+    )
+
+
+async def ensure_editorial(session: AsyncSession, *, source: Source) -> Author:
+    """Idempotente: 'Editorial <source.name>' como autor sintético editorial."""
+    return await _ensure_synthetic_kind(
+        session, source=source, name=f"Editorial {source.name}", kind="editorial"
     )

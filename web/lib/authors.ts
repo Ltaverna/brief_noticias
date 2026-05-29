@@ -13,13 +13,14 @@ export type AuthorListItem = {
   slug: string;
   source_slug: string | null;
   is_synthetic: boolean;
+  kind: string;
   article_count: number;
 };
 
 export type AuthorStats = {
   author: {
     id: number; name: string; canonical: string; slug: string;
-    source: string | null; is_synthetic: boolean;
+    source: string | null; is_synthetic: boolean; kind: string;
   };
   totals: {
     articles: number; clusters: number; coauthored: number;
@@ -95,11 +96,12 @@ export type AuthorRadar = {
 };
 
 export async function listAuthors(params: {
-  source?: string; q?: string; order?: string; limit?: number
+  source?: string; q?: string; kind?: string; order?: string; limit?: number
 } = {}): Promise<{ authors: AuthorListItem[] }> {
   const qs = new URLSearchParams();
   if (params.source) qs.set("source", params.source);
   if (params.q) qs.set("q", params.q);
+  if (params.kind) qs.set("kind", params.kind);
   if (params.order) qs.set("order", params.order);
   if (params.limit) qs.set("limit", String(params.limit));
   const r = await fetch(`${route("/authors")}?${qs}`);

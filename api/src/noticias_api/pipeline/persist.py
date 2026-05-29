@@ -5,10 +5,31 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from noticias_api.db.models import Article, ArticleAuthor, Author, Source
-from noticias_api.pipeline.authors import ensure_synthetic, resolve_author
+from noticias_api.pipeline.authors import (
+    ensure_editorial,
+    ensure_synthetic,
+    resolve_author,
+)
 from noticias_api.pipeline.fetch import FetchedItem
 
 logger = logging.getLogger(__name__)
+
+
+def _looks_like_editorial(url: str | None, title: str | None) -> bool:
+    """Detecta si un artículo es una pieza editorial del diario.
+
+    Heurísticas conservadoras: solo URLs con un segmento /editorial/ o
+    /opinion/editorial/, o títulos que comienzan con 'Editorial:' o 'Editorial '.
+    """
+    if url:
+        u = url.lower()
+        if "/editorial/" in u or "/editoriales/" in u or "/opinion/editorial" in u:
+            return True
+    if title:
+        t = title.strip().lower()
+        if t.startswith("editorial:") or t.startswith("editorial "):
+            return True
+    return False
 
 
 async def persist_items(
@@ -43,7 +64,12 @@ async def persist_items(
         if article_id is None:
             continue
         await _persist_authors_for_article(
-            session, article_id=article_id, source=source, raw_authors=item.authors
+            session,
+            article_id=article_id,
+            source=source,
+            raw_authors=item.authors,
+            url=item.url,
+            title=item.title,
         )
 
     await session.commit()
@@ -56,6 +82,8 @@ async def _persist_authors_for_article(
     article_id: int,
     source: Source,
     raw_authors: list[str],
+    url: str | None = None,
+    title: str | None = None,
 ) -> None:
     existing = await session.scalar(
         select(ArticleAuthor).where(ArticleAuthor.article_id == article_id)
@@ -63,8 +91,14 @@ async def _persist_authors_for_article(
     if existing is not None:
         return
 
+    is_editorial = _looks_like_editorial(url, title)
+
     if not raw_authors:
-        synth = await ensure_synthetic(session, source=source)
+        synth = (
+            await ensure_editorial(session, source=source)
+            if is_editorial
+            else await ensure_synthetic(session, source=source)
+        )
         session.add(ArticleAuthor(article_id=article_id, author_id=synth.id, position=0))
         return
 
@@ -105,6 +139,14 @@ async def persist_authors_from_html(
         await session.flush()
 
     if not authors_from_html:
+        # Sin bylines reales en HTML: si parece editorial, asignamos al
+        # sintético editorial; si no, dejamos sin link (otro paso decidirá)
+        if _looks_like_editorial(article.url, article.title):
+            source = await session.get(Source, article.source_id)
+            ed = await ensure_editorial(session, source=source)
+            session.add(
+                ArticleAuthor(article_id=article.id, author_id=ed.id, position=0)
+            )
         return
 
     source = await session.get(Source, article.source_id)

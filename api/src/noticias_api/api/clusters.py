@@ -24,6 +24,7 @@ class AuthorRef(BaseModel):
     name: str
     slug: str
     is_synthetic: bool
+    kind: str
 
 
 class ArticleOut(BaseModel):
@@ -93,16 +94,20 @@ async def get_cluster(
 
     # Fetch authors for all articles in this cluster in one query
     auth_rows = (await session.execute(
-        select(Article.id, Author.name, Author.canonical, Author.is_synthetic, ArticleAuthor.position)
+        select(Article.id, Author.name, Author.canonical, Author.is_synthetic,
+               Author.kind, ArticleAuthor.position)
         .join(ArticleAuthor, ArticleAuthor.article_id == Article.id)
         .join(Author, Author.id == ArticleAuthor.author_id)
         .where(Article.cluster_id == cluster_id)
         .order_by(ArticleAuthor.position)
     )).all()
     by_article: dict[int, list[AuthorRef]] = {}
-    for art_id, name, canon, is_syn, _pos in auth_rows:
+    for art_id, name, canon, is_syn, kind, _pos in auth_rows:
         by_article.setdefault(art_id, []).append(
-            AuthorRef(name=name, slug=canon.replace(" ", "-"), is_synthetic=is_syn)
+            AuthorRef(
+                name=name, slug=canon.replace(" ", "-"),
+                is_synthetic=is_syn, kind=kind,
+            )
         )
 
     article_outs: list[ArticleOut] = []
