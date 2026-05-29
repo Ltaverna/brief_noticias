@@ -13,11 +13,51 @@ GENERIC_BYLINES: frozenset[str] = frozenset({
     "redaccion", "redacción", "agencia", "staff", "editorial", "n/a",
 })
 
+# Substrings (en forma canonicalizada — lowercase sin acentos sin puntuación)
+# que indican que el "byline" es en realidad un fragmento de UI o un alias de
+# redacción anónima. Cualquier nombre que contenga alguno de estos se descarta.
+JUNK_BYLINE_PATTERNS: tuple[str, ...] = (
+    "agregar",            # "Agregar Infobae en Google"
+    "google",
+    "tus medios",
+    "seguir en",          # "Seguir en abre en nueva pestaña"
+    "nueva pestana",
+    "click",
+    "cookies",
+    "newsroom",           # "Newsroom Infobae" → es alias de redacción
+    ".com",               # "Clarin.com - Home"
+    "home",
+    "portada",
+    "http",
+)
+
+# Sufijos que delatan al byline como un nombre de redacción del diario
+# (ej: "Infobae Noticias", "Clarín Noticias") en vez de una persona real.
+JUNK_BYLINE_SUFFIXES: tuple[str, ...] = (
+    " noticias",
+)
+
+# Cualquier byline más largo que esto es casi seguro UI o un párrafo capturado
+# por error, no una persona real.
+MAX_BYLINE_LENGTH: int = 60
+
 _PREFIX_RE = re.compile(r"^\s*por\s+", re.IGNORECASE)
 _PAREN_RE = re.compile(r"\s*\([^)]*\)\s*")
 _EMAIL_RE = re.compile(r"\S+@\S+")
 _SPLIT_RE = re.compile(r"\s+y\s+|,\s*|\s*/\s*|;\s*")
 _PUNCT_RE = re.compile(r"[^\w\s]", re.UNICODE)
+
+
+def _looks_like_junk(name: str) -> bool:
+    """Heurística para detectar bylines que no son personas reales."""
+    if len(name) > MAX_BYLINE_LENGTH:
+        return True
+    canon = canonicalize_author(name)
+    if any(pat in canon for pat in JUNK_BYLINE_PATTERNS):
+        return True
+    if any(canon.endswith(sfx.strip()) for sfx in JUNK_BYLINE_SUFFIXES):
+        return True
+    return False
 
 
 def _strip_accents(s: str) -> str:
@@ -53,6 +93,8 @@ def parse_byline(raw: str | None) -> list[str]:
         if not cleaned:
             continue
         if canonicalize_author(cleaned) in GENERIC_BYLINES:
+            continue
+        if _looks_like_junk(cleaned):
             continue
         if cleaned in seen:
             continue
