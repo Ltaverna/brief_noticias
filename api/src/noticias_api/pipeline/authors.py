@@ -1,6 +1,12 @@
 """Parsing y canonicalización de bylines."""
 import re
 import unicodedata
+from datetime import UTC, datetime
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from noticias_api.db.models import Author, AuthorAlias, Source
 
 GENERIC_BYLINES: frozenset[str] = frozenset({
     "redaccion", "redacción", "agencia", "staff", "editorial", "n/a",
@@ -54,14 +60,6 @@ def parse_byline(raw: str | None) -> list[str]:
     return out
 
 
-from datetime import UTC, datetime
-
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from noticias_api.db.models import Author, AuthorAlias, Source
-
-
 async def resolve_author(
     session: AsyncSession, *, name: str, source_id: int
 ) -> Author:
@@ -87,6 +85,7 @@ async def resolve_author(
         existing.last_seen_at = datetime.now(UTC)
         if len(name) > len(existing.name):
             existing.name = name
+        await session.flush()
         return existing
 
     # 3. Crear

@@ -33,11 +33,12 @@ async def test_resolve_author_idempotent(db_session, source):
 
 @pytest.mark.asyncio
 async def test_resolve_author_prefers_longer_display_name(db_session, source):
-    a1 = await resolve_author(db_session, name="J. Pérez", source_id=source.id)
-    a2 = await resolve_author(db_session, name="J Pérez", source_id=source.id)
+    # "J Pérez" and "J. Pérez" both canonicalize to "j perez"; the longer wins.
+    a1 = await resolve_author(db_session, name="J Pérez", source_id=source.id)
+    a2 = await resolve_author(db_session, name="J. Pérez", source_id=source.id)
     assert a1.id == a2.id
     await db_session.refresh(a1)
-    assert "J" in a1.name
+    assert a1.name == "J. Pérez"
 
 
 @pytest.mark.asyncio
