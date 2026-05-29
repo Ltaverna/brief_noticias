@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -12,7 +12,7 @@ import {
 } from "@/lib/authors";
 import { AuthorRadarChart } from "@/components/AuthorRadarChart";
 
-export default function ComparePage() {
+function CompareInner() {
   const sp = useSearchParams();
   const a = sp.get("a") ?? "";
   const b = sp.get("b") ?? "";
@@ -123,5 +123,13 @@ export default function ComparePage() {
         </>
       )}
     </div>
+  );
+}
+
+export default function ComparePage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-slate-500">Cargando…</div>}>
+      <CompareInner />
+    </Suspense>
   );
 }

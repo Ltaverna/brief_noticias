@@ -1,10 +1,10 @@
 "use client";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { getSharedClusters, type SharedCluster } from "@/lib/authors";
 
-export default function SharedClustersPage() {
+function SharedClustersInner() {
   const sp = useSearchParams();
   const a = sp.get("a") ?? "";
   const b = sp.get("b") ?? "";
@@ -32,5 +32,13 @@ export default function SharedClustersPage() {
         ))}
       </ul>
     </div>
+  );
+}
+
+export default function SharedClustersPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-slate-500">Cargando…</div>}>
+      <SharedClustersInner />
+    </Suspense>
   );
 }
