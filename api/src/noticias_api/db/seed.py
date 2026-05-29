@@ -76,6 +76,30 @@ SEED_SOURCES: list[dict[str, str]] = [
         "base_url": "https://www.baenegocios.com",
         "color": "#475569",
     },
+    {
+        "slug": "el-diario-ar",
+        "name": "El Diario AR",
+        "editorial_group": "mainstream",
+        "rss_url": "https://www.eldiarioar.com/rss/",
+        "base_url": "https://www.eldiarioar.com",
+        "color": "#e11d48",  # rose-600
+    },
+    {
+        "slug": "perfil-politica",
+        "name": "Perfil Política",
+        "editorial_group": "mainstream",
+        "rss_url": "https://www.perfil.com/feed/politica",
+        "base_url": "https://www.perfil.com",
+        "color": "#a16207",  # yellow-700
+    },
+    {
+        "slug": "bichos-de-campo",
+        "name": "Bichos de Campo",
+        "editorial_group": "agro",
+        "rss_url": "https://bichosdecampo.com/feed/",
+        "base_url": "https://bichosdecampo.com",
+        "color": "#65a30d",  # lime-600
+    },
 ]
 
 
