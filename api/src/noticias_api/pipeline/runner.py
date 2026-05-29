@@ -55,6 +55,7 @@ class RunStats:
     sagas_active: int = 0
     entities_extracted: int = 0
     topics_classified: int = 0
+    authors_vectorized: int = 0
     errors_per_source: dict[str, int] = field(default_factory=dict)
 
     def dump(self) -> dict:
@@ -71,6 +72,7 @@ class RunStats:
             "sagas_active": self.sagas_active,
             "entities_extracted": self.entities_extracted,
             "topics_classified": self.topics_classified,
+            "authors_vectorized": self.authors_vectorized,
             "errors_per_source": self.errors_per_source,
         }
 
@@ -154,6 +156,10 @@ async def run_pipeline(
                     session, client, model=cfg.topic_classification_model,
                 )
                 stats.topics_classified = topic_stats.get("classified", 0)
+
+            from noticias_api.pipeline.author_vectors import update_author_vectors
+            av_stats = await update_author_vectors(session)
+            stats.authors_vectorized = av_stats.get("updated", 0)
 
         final_status = "partial" if stats.errors_per_source else "success"
         await session.execute(
