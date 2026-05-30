@@ -20,6 +20,7 @@ _poller_stop: asyncio.Event | None = None
 
 _pipeline_lock = asyncio.Lock()
 _current_run_id: int | None = None
+_loop: asyncio.AbstractEventLoop | None = None
 
 
 def get_current_run_id() -> int | None:
@@ -67,13 +68,24 @@ def schedule_pipeline_in_task(trigger: str, settings: Settings) -> asyncio.Task:
     return asyncio.create_task(_run_locked(trigger, settings))
 
 
+def _schedule_pipeline(trigger: str, settings: Settings) -> None:
+    """Thread-safe wrapper to schedule the pipeline coroutine in the main event loop."""
+    global _loop
+    if _loop and _loop.is_running():
+        asyncio.run_coroutine_threadsafe(_run_locked(trigger, settings), _loop)
+    else:
+        logger.error("No event loop available for scheduler job")
+
+
 def setup_scheduler(settings: Settings) -> AsyncIOScheduler:
-    global _poller_task, _poller_stop
+    global _poller_task, _poller_stop, _loop
+    _loop = asyncio.get_event_loop()
     scheduler = AsyncIOScheduler(timezone="America/Argentina/Buenos_Aires")
     for hour in settings.cron_hours_list:
         scheduler.add_job(
-            lambda h=hour: asyncio.create_task(_run_locked("cron", settings)),
+            _schedule_pipeline,
             CronTrigger(hour=hour, minute=settings.cron_minute),
+            args=("cron", settings),
             id=f"daily_briefing_{hour:02d}",
             replace_existing=True,
         )
