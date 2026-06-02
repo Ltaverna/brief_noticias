@@ -30,7 +30,7 @@ export function AuthorProfilePanel({ slug, nSample }: { slug: string; nSample: n
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-stone-500">
           {profile
             ? `Última generación: ${new Date(profile.generated_at).toLocaleDateString()} · muestra ${profile.n_sample}`
             : "Sin perfil generado aún"}
@@ -39,7 +39,7 @@ export function AuthorProfilePanel({ slug, nSample }: { slug: string; nSample: n
           onClick={generate}
           disabled={insufficient || loading}
           title={insufficient ? `Se necesitan al menos ${MIN_N} análisis` : ""}
-          className="px-3 py-1.5 text-sm rounded bg-blue-600 text-white hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
+          className="px-3 py-1.5 text-sm rounded bg-blue-600 text-white hover:bg-blue-700 disabled:bg-stone-300 disabled:cursor-not-allowed"
         >
           {loading ? "Generando…" : profile ? "Regenerar" : "Generar perfil"}
         </button>
@@ -64,7 +64,7 @@ function Field({ label, value }: { label: string; value: string }) {
   if (!value) return null;
   return (
     <div>
-      <div className="text-xs text-slate-500 uppercase mb-1">{label}</div>
+      <div className="text-xs text-stone-500 uppercase mb-1">{label}</div>
       <p>{value}</p>
     </div>
   );
@@ -74,7 +74,7 @@ function ListField({ label, items }: { label: string; items: string[] }) {
   if (!items?.length) return null;
   return (
     <div>
-      <div className="text-xs text-slate-500 uppercase mb-1">{label}</div>
+      <div className="text-xs text-stone-500 uppercase mb-1">{label}</div>
       <ul className="list-disc list-inside space-y-1">
         {items.map((s, i) => <li key={i}>{s}</li>)}
       </ul>

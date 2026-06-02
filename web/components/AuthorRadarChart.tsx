@@ -37,9 +37,23 @@ export function AuthorRadarChart({ series, labels, size = 320 }: Props) {
   };
   const rings = [0.25, 0.5, 0.75, 1.0];
 
+  const summary = `Gráfico radar de ${labels.join(", ")}. ${series
+    .map(
+      (s) =>
+        `${s.label} (n=${s.n}): ${s.values
+          .map((v, i) => `${labels[i]} ${Math.round(v * 100)}%`)
+          .join(", ")}`,
+    )
+    .join(". ")}.`;
+
   return (
     <div className="space-y-3">
-      <svg viewBox={`0 0 ${size} ${size}`} className="w-full max-w-md mx-auto">
+      <svg
+        viewBox={`0 0 ${size} ${size}`}
+        role="img"
+        aria-label={summary}
+        className="w-full max-w-md mx-auto text-stone-200 dark:text-stone-700"
+      >
         {/* concentric rings */}
         {rings.map(rv => (
           <polygon
@@ -49,7 +63,7 @@ export function AuthorRadarChart({ series, labels, size = 320 }: Props) {
               return `${p.x},${p.y}`;
             }).join(" ")}
             fill="none"
-            stroke="#e2e8f0"
+            stroke="currentColor"
             strokeDasharray={rv === 1 ? undefined : "3 3"}
             strokeWidth={1}
           />
@@ -64,7 +78,7 @@ export function AuthorRadarChart({ series, labels, size = 320 }: Props) {
               y1={cy}
               x2={p.x}
               y2={p.y}
-              stroke="#e2e8f0"
+              stroke="currentColor"
               strokeWidth={1}
             />
           );
@@ -104,7 +118,7 @@ export function AuthorRadarChart({ series, labels, size = 320 }: Props) {
               y={p.y}
               textAnchor={anchor}
               dominantBaseline="middle"
-              className="fill-slate-600 dark:fill-slate-300"
+              className="fill-stone-600 dark:fill-stone-300"
               fontSize={11}
             >
               {label}
@@ -119,7 +133,7 @@ export function AuthorRadarChart({ series, labels, size = 320 }: Props) {
               className="w-3 h-3 rounded-sm"
               style={{ backgroundColor: s.color, opacity: s.n < MIN_N ? 0.4 : 1 }}
             />
-            <span className={s.n < MIN_N ? "text-slate-400 italic" : ""}>
+            <span className={s.n < MIN_N ? "text-stone-400 italic" : ""}>
               {s.label}
               {s.n < MIN_N && ` (muestra chica n=${s.n})`}
               {s.n >= MIN_N && ` (n=${s.n})`}

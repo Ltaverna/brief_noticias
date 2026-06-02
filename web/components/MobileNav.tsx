@@ -1,11 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { NAV_LINKS, type NavLink } from "@/lib/nav";
+import { NAV_LINKS, type NavLink as NavLinkItem } from "@/lib/nav";
+import { NavLink } from "./NavLink";
 
-export function MobileNav({ links }: { links?: NavLink[] }) {
+export function MobileNav({ links }: { links?: NavLinkItem[] }) {
   const items = links && links.length > 0 ? links : NAV_LINKS;
   const [open, setOpen] = useState(false);
 
@@ -101,14 +101,12 @@ export function MobileNav({ links }: { links?: NavLink[] }) {
             <ul className="grow py-2">
               {items.map((l) => (
                 <li key={l.href}>
-                  <Link
+                  <NavLink
                     href={l.href}
+                    label={l.label}
+                    variant="mobile"
                     onClick={() => setOpen(false)}
-                    style={{ minHeight: 44, color: "inherit" }}
-                    className="flex items-center px-6 py-3 text-base font-medium text-stone-900 hover:bg-stone-100 dark:text-stone-100 dark:hover:bg-stone-900"
-                  >
-                    {l.label}
-                  </Link>
+                  />
                 </li>
               ))}
             </ul>

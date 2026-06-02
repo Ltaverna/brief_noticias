@@ -15,7 +15,7 @@ const KIND_STYLES: Record<string, string> = {
   person:
     "bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-950 dark:text-blue-300",
   newsroom:
-    "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 italic",
+    "bg-stone-100 text-stone-500 dark:bg-stone-800 dark:text-stone-400 italic",
   editorial:
     "bg-violet-50 text-violet-700 hover:bg-violet-100 dark:bg-violet-950 dark:text-violet-300 font-medium",
   agency:

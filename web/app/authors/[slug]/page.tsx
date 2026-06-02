@@ -21,16 +21,16 @@ export default function AuthorPage() {
     getAuthorStats(slug).then(setStats);
   }, [slug]);
 
-  if (!stats) return <div className="p-8 text-slate-500">Cargando…</div>;
+  if (!stats) return <div className="p-8 text-stone-500">Cargando…</div>;
   const a = stats.author;
   const n = stats.totals.articles;
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
-      <header className="flex items-center justify-between mb-6 pb-6 border-b border-slate-200 dark:border-slate-800">
+      <header className="flex items-center justify-between mb-6 pb-6 border-b border-stone-200 dark:border-stone-800">
         <div>
           <h1 className="text-2xl font-semibold">{a.name}</h1>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-stone-500">
             {a.source ?? "sin diario"} · {n} notas
           </p>
         </div>
@@ -42,7 +42,7 @@ export default function AuthorPage() {
         </Link>
       </header>
 
-      <nav className="flex gap-2 mb-6 border-b border-slate-200 dark:border-slate-800 overflow-x-auto">
+      <nav className="flex gap-2 mb-6 border-b border-stone-200 dark:border-stone-800 overflow-x-auto">
         {(["resumen", "sesgo", "perfil", "notas"] as Tab[]).map(t => (
           <button
             key={t}
@@ -50,7 +50,7 @@ export default function AuthorPage() {
             className={`px-4 py-2 text-sm whitespace-nowrap border-b-2 ${
               tab === t
                 ? "border-blue-600 text-blue-600 font-medium"
-                : "border-transparent text-slate-500 hover:text-slate-700"
+                : "border-transparent text-stone-500 hover:text-stone-700"
             }`}
           >
             {t === "resumen" ? "Resumen" :

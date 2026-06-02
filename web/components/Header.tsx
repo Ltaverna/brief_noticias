@@ -1,7 +1,9 @@
 import Link from "next/link";
 
-import { NAV_LINKS } from "@/lib/nav";
+import { PRIMARY_NAV, SECONDARY_NAV } from "@/lib/nav";
 import { MobileNav } from "./MobileNav";
+import { MoreMenu } from "./MoreMenu";
+import { NavLink } from "./NavLink";
 import { SearchBox } from "./SearchBox";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -24,15 +26,10 @@ export function Header() {
 
         {/* Desktop nav (>= lg, 1024px) */}
         <nav className="hidden lg:flex items-center gap-1 text-sm shrink-0">
-          {NAV_LINKS.slice(1).map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              className="cursor-pointer whitespace-nowrap rounded-md px-2.5 py-1.5 text-stone-600 transition-colors duration-150 hover:bg-stone-100 hover:text-stone-900 dark:text-stone-300 dark:hover:bg-stone-800 dark:hover:text-stone-50"
-            >
-              {l.label}
-            </Link>
+          {PRIMARY_NAV.slice(1).map((l) => (
+            <NavLink key={l.href} href={l.href} label={l.label} />
           ))}
+          <MoreMenu links={SECONDARY_NAV} />
         </nav>
 
         {/* Theme toggle (always visible) */}

@@ -7,7 +7,7 @@ const TONE_COLORS: Record<string, string> = {
   critico: "#f43f5e",      // rose-500
   esceptico: "#fbbf24",    // amber-400
   alarmista: "#fb923c",    // orange-400
-  otro: "#94a3b8",         // slate-400
+  otro: "#78716c",         // stone-500
 };
 
 const TONE_LABEL: Record<string, string> = {
@@ -48,13 +48,24 @@ export function ToneDistributionChart({ data }: { data: ToneTrends }) {
         const totals = bySource.get(src) ?? {};
         const total = Object.values(totals).reduce((s, n) => s + n, 0);
         if (total === 0) return null;
+        const breakdown = data.tones
+          .filter((tone) => (totals[tone] ?? 0) > 0)
+          .map(
+            (tone) =>
+              `${TONE_LABEL[tone] ?? tone} ${(((totals[tone] ?? 0) / total) * 100).toFixed(0)}%`,
+          )
+          .join(", ");
         return (
           <div key={src}>
             <div className="mb-1 flex items-center justify-between text-sm">
               <span className="font-mono">{src}</span>
               <span className="text-xs text-stone-500">{total} análisis</span>
             </div>
-            <div className="flex h-6 w-full overflow-hidden rounded-md">
+            <div
+              className="flex h-6 w-full overflow-hidden rounded-md"
+              role="img"
+              aria-label={`${src}: ${breakdown}`}
+            >
               {data.tones.map((tone) => {
                 const count = totals[tone] ?? 0;
                 if (count === 0) return null;

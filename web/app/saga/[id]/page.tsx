@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { api } from "@/lib/api";
+import { ArrowLeft } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -15,8 +16,12 @@ export default async function SagaPage({
   const saga = await api.getSaga(sid);
   return (
     <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
-      <Link href="/sagas" className="text-sm text-stone-500 hover:underline">
-        ← Sagas
+      <Link
+        href="/sagas"
+        className="inline-flex items-center gap-1 text-sm text-stone-500 hover:underline"
+      >
+        <ArrowLeft size={14} />
+        Sagas
       </Link>
       <h1 className="mt-2 text-3xl font-serif font-bold">{saga.title}</h1>
       <p className="mt-1 text-sm text-stone-600 dark:text-stone-400">

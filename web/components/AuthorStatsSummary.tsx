@@ -27,7 +27,7 @@ export function AuthorStatsSummary({ slug, stats }: Props) {
 
       {radar && (
         <section>
-          <h2 className="text-sm font-semibold text-slate-500 uppercase mb-2">Radar</h2>
+          <h2 className="text-sm font-semibold text-stone-500 uppercase mb-2">Radar</h2>
           <AuthorRadarChart
             series={[{
               label: radar.author.name,
@@ -49,26 +49,26 @@ export function AuthorStatsSummary({ slug, stats }: Props) {
       {!insufficient && (
         <>
           <section>
-            <h2 className="text-sm font-semibold text-slate-500 uppercase mb-2">Temas</h2>
+            <h2 className="text-sm font-semibold text-stone-500 uppercase mb-2">Temas</h2>
             <ul className="space-y-1">
               {stats.by_topic.slice(0, 6).map(t => (
                 <li key={t.topic} className="flex items-center gap-2 text-sm">
-                  <span className="w-24 text-slate-600">{t.topic}</span>
-                  <div className="flex-1 bg-slate-100 dark:bg-slate-800 h-2 rounded">
+                  <span className="w-24 text-stone-600">{t.topic}</span>
+                  <div className="flex-1 bg-stone-100 dark:bg-stone-800 h-2 rounded">
                     <div className="h-2 bg-blue-500 rounded" style={{ width: `${t.share * 100}%` }} />
                   </div>
-                  <span className="w-12 text-right text-slate-500">{t.count}</span>
+                  <span className="w-12 text-right text-stone-500">{t.count}</span>
                 </li>
               ))}
             </ul>
           </section>
 
           <section>
-            <h2 className="text-sm font-semibold text-slate-500 uppercase mb-2">Top entidades</h2>
+            <h2 className="text-sm font-semibold text-stone-500 uppercase mb-2">Top entidades</h2>
             <div className="flex flex-wrap gap-2">
               {stats.top_entities.map(e => (
-                <span key={`${e.kind}:${e.name}`} className="px-2 py-0.5 text-xs rounded bg-slate-100 dark:bg-slate-800">
-                  {e.name} <span className="text-slate-400">({e.clusters})</span>
+                <span key={`${e.kind}:${e.name}`} className="px-2 py-0.5 text-xs rounded bg-stone-100 dark:bg-stone-800">
+                  {e.name} <span className="text-stone-400">({e.clusters})</span>
                 </span>
               ))}
             </div>
@@ -78,14 +78,14 @@ export function AuthorStatsSummary({ slug, stats }: Props) {
 
       {similar && similar.length > 0 && (
         <section>
-          <h2 className="text-sm font-semibold text-slate-500 uppercase mb-2">Autores parecidos</h2>
+          <h2 className="text-sm font-semibold text-stone-500 uppercase mb-2">Autores parecidos</h2>
           <ul className="space-y-1">
             {similar.slice(0, 5).map(s => (
               <li key={s.slug} className="flex justify-between text-sm">
                 <Link href={`/authors/${s.slug}`} className="hover:underline">
-                  {s.name} <span className="text-slate-400">{s.source}</span>
+                  {s.name} <span className="text-stone-400">{s.source}</span>
                 </Link>
-                <span className="text-slate-500">{(s.score * 100).toFixed(0)}%</span>
+                <span className="text-stone-500">{(s.score * 100).toFixed(0)}%</span>
               </li>
             ))}
           </ul>
@@ -97,8 +97,8 @@ export function AuthorStatsSummary({ slug, stats }: Props) {
 
 function KPI({ label, value }: { label: string; value: number }) {
   return (
-    <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded">
-      <div className="text-xs text-slate-500 uppercase">{label}</div>
+    <div className="bg-stone-50 dark:bg-stone-900 p-4 rounded">
+      <div className="text-xs text-stone-500 uppercase">{label}</div>
       <div className="text-2xl font-semibold">{value}</div>
     </div>
   );

@@ -17,6 +17,32 @@ html { color-scheme: light dark; }
 body { font-family: var(--font-sans); }
 h1, h2, h3 { font-family: var(--font-serif); letter-spacing: -0.015em; }
 
+/* Visible keyboard focus for all interactive elements.
+   Uses :focus-visible so it never shows on mouse/touch interaction.
+   outline follows border-radius in modern browsers. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-stone-500);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm, 0.25rem);
+}
+.dark :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline-color: var(--color-stone-400);
+}
+
+/* Respect the user's reduced-motion preference globally: near-instant
+   transitions/animations and no smooth scroll. Per-component opt-outs
+   (motion-reduce:*) handle the rest. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* iOS notch / safe area support */
 @supports (padding: env(safe-area-inset-top)) {
   body {

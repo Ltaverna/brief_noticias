@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FormEvent, ReactNode, useEffect, useRef, useState } from "react";
 
 import { api } from "@/lib/api";
+import { AlertTriangle, Check, Circle } from "@/components/icons";
 import { QACitation, QAResponse } from "@/lib/types";
 import {
   clearConversation,
@@ -59,9 +60,14 @@ export default function QAPage() {
     });
   }, []);
 
-  // Scroll to bottom when turns change
+  // Scroll to bottom when turns change (respect reduced-motion)
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const prefersReduced = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    bottomRef.current?.scrollIntoView({
+      behavior: prefersReduced ? "auto" : "smooth",
+    });
   }, [turns, loading]);
 
   async function onSubmit(e: FormEvent) {
@@ -197,16 +203,22 @@ function CoverageBadge({ confidence }: { confidence?: string }) {
       "bg-stone-200 text-stone-700 dark:bg-stone-800 dark:text-stone-300",
   };
   const labels: Record<string, string> = {
-    confident: "✓ Cobertura buena",
-    partial: "△ Cobertura parcial",
-    empty: "○ Sin cobertura",
+    confident: "Cobertura buena",
+    partial: "Cobertura parcial",
+    empty: "Sin cobertura",
+  };
+  const icons: Record<string, ReactNode> = {
+    confident: <Check size={13} />,
+    partial: <AlertTriangle size={13} />,
+    empty: <Circle size={13} />,
   };
   const cls = styles[confidence] ?? styles.empty;
   const label = labels[confidence] ?? confidence;
   return (
     <span
-      className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}
     >
+      {icons[confidence] ?? icons.empty}
       {label}
     </span>
   );
@@ -241,10 +253,14 @@ function ThinkingIndicator() {
   return (
     <div className="flex justify-start">
       <div className="rounded-2xl rounded-bl-sm bg-stone-100 px-4 py-3 dark:bg-stone-800">
-        <span className="inline-flex gap-1 text-stone-400 dark:text-stone-500">
-          <span className="animate-bounce [animation-delay:0ms]">●</span>
-          <span className="animate-bounce [animation-delay:150ms]">●</span>
-          <span className="animate-bounce [animation-delay:300ms]">●</span>
+        <span
+          className="inline-flex gap-1 text-stone-400 dark:text-stone-500"
+          role="status"
+          aria-label="Generando respuesta"
+        >
+          <span className="h-1.5 w-1.5 rounded-full bg-current animate-bounce motion-reduce:animate-none [animation-delay:0ms]" />
+          <span className="h-1.5 w-1.5 rounded-full bg-current animate-bounce motion-reduce:animate-none [animation-delay:150ms]" />
+          <span className="h-1.5 w-1.5 rounded-full bg-current animate-bounce motion-reduce:animate-none [animation-delay:300ms]" />
         </span>
       </div>
     </div>

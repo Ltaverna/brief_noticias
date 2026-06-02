@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { ClusterDetail } from "@/lib/types";
+import { ArrowRight } from "./icons";
 
 export function CompareColumn({ cluster }: { cluster: ClusterDetail | null }) {
   if (!cluster) {
@@ -13,8 +14,12 @@ export function CompareColumn({ cluster }: { cluster: ClusterDetail | null }) {
   const a = cluster.analysis;
   return (
     <div className="rounded-md border border-stone-200 p-5 dark:border-stone-800">
-      <Link href={`/cluster/${cluster.id}`} className="text-xs text-stone-500 hover:underline">
-        Ver cluster #{cluster.id} →
+      <Link
+        href={`/cluster/${cluster.id}`}
+        className="inline-flex items-center gap-1 text-xs text-stone-500 hover:underline"
+      >
+        Ver cluster #{cluster.id}
+        <ArrowRight size={12} />
       </Link>
       <h2 className="mt-1 text-xl font-serif font-semibold leading-snug">
         {a?.headline ?? "(análisis pendiente)"}

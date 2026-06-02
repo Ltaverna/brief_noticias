@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { api } from "@/lib/api";
 import { CompareColumn } from "@/components/CompareColumn";
+import { ArrowLeft } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -30,8 +31,12 @@ export default async function ComparePage({
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-      <Link href="/" className="text-sm text-stone-500 hover:underline">
-        ← Volver al briefing
+      <Link
+        href="/"
+        className="inline-flex items-center gap-1 text-sm text-stone-500 hover:underline"
+      >
+        <ArrowLeft size={14} />
+        Volver al briefing
       </Link>
       <h1 className="mt-2 text-3xl font-serif font-bold">Comparar</h1>
       <p className="mt-1 text-sm text-stone-600 dark:text-stone-400">

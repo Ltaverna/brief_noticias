@@ -22,7 +22,7 @@ export function AuthorArticlesList({ slug }: { slug: string }) {
             <span>{a.title}</span>
           )}
           {a.published_at && (
-            <span className="text-xs text-slate-500 ml-2">
+            <span className="text-xs text-stone-500 ml-2">
               {new Date(a.published_at).toLocaleDateString()}
             </span>
           )}

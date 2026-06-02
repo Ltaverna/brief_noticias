@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { api } from "@/lib/api";
+import { ArrowLeft } from "@/components/icons";
 import { EntityChip } from "@/components/EntityChip";
 
 export const dynamic = "force-dynamic";
@@ -24,8 +25,12 @@ export default async function EntityPage({
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
-      <Link href="/entities" className="text-sm text-stone-500 hover:underline">
-        ← Entidades
+      <Link
+        href="/entities"
+        className="inline-flex items-center gap-1 text-sm text-stone-500 hover:underline"
+      >
+        <ArrowLeft size={14} />
+        Entidades
       </Link>
       <div className="mt-2">
         <EntityChip id={entity.id} name={entity.name} kind={entity.kind} />

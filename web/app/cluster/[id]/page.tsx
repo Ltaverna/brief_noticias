@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { api } from "@/lib/api";
 import { AuthorChip } from "@/components/AuthorChip";
+import { ArrowLeft } from "@/components/icons";
 import { ClusterNotes } from "@/components/ClusterNotes";
 import { DivergenceTable } from "@/components/DivergenceTable";
 import { EntityChip } from "@/components/EntityChip";
@@ -35,8 +36,12 @@ export default async function ClusterPage({
     <>
       <main className="mx-auto max-w-4xl space-y-8 px-4 py-8 sm:px-6">
         <header>
-          <Link href="/" className="text-sm text-stone-500 hover:underline">
-            ← Volver al briefing
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1 text-sm text-stone-500 hover:underline"
+          >
+            <ArrowLeft size={14} />
+            Volver al briefing
           </Link>
           <h1 className="mt-2 text-3xl font-serif font-bold">
             {cluster.analysis?.headline ?? "Análisis pendiente"}

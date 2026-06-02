@@ -1,4 +1,5 @@
 import { BiasScorecard as Data } from "@/lib/types";
+import { Dot } from "./icons";
 
 function pct(n: number, total: number): string {
   if (total === 0) return "—";
@@ -60,11 +61,15 @@ export function BiasScorecard({ data }: { data: Data }) {
                       <span className="ml-1 text-xs text-stone-500">({e.cluster_count})</span>
                     </span>
                     <span className="flex items-center gap-2 shrink-0">
-                      <span className="text-emerald-700 dark:text-emerald-300">
-                        🟢 {pct(cell.favorable, cell.total)}
+                      <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-300">
+                        <Dot size={8} />
+                        {pct(cell.favorable, cell.total)}
+                        <span className="sr-only"> favorable</span>
                       </span>
-                      <span className="text-rose-700 dark:text-rose-300">
-                        🔴 {pct(cell.critico, cell.total)}
+                      <span className="inline-flex items-center gap-1 text-rose-700 dark:text-rose-300">
+                        <Dot size={8} />
+                        {pct(cell.critico, cell.total)}
+                        <span className="sr-only"> crítico</span>
                       </span>
                       <span className="text-xs text-stone-400">({cell.total})</span>
                     </span>
@@ -114,11 +119,15 @@ export function BiasScorecard({ data }: { data: Data }) {
                       title={`${cell.total} análisis · favorable=${cell.favorable} crítico=${cell.critico} neutral=${cell.neutral} otro=${cell.other}`}
                     >
                       <div className="flex items-center gap-1.5">
-                        <span className="text-emerald-700 dark:text-emerald-300">
-                          🟢{pct(cell.favorable, cell.total)}
+                        <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-300">
+                          <Dot size={8} />
+                          {pct(cell.favorable, cell.total)}
+                          <span className="sr-only"> favorable</span>
                         </span>
-                        <span className="text-rose-700 dark:text-rose-300">
-                          🔴{pct(cell.critico, cell.total)}
+                        <span className="inline-flex items-center gap-1 text-rose-700 dark:text-rose-300">
+                          <Dot size={8} />
+                          {pct(cell.critico, cell.total)}
+                          <span className="sr-only"> crítico</span>
                         </span>
                       </div>
                       <div className="text-xs text-stone-500">{cell.total}</div>

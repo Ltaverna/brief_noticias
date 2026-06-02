@@ -18,7 +18,7 @@ function SharedClustersInner() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
       <h1 className="text-xl font-semibold mb-4">Clusters compartidos</h1>
-      <p className="text-sm text-slate-500 mb-6">{a} vs {b}</p>
+      <p className="text-sm text-stone-500 mb-6">{a} vs {b}</p>
       <ul className="space-y-2">
         {clusters.map(c => (
           <li key={c.id}>
@@ -37,7 +37,7 @@ function SharedClustersInner() {
 
 export default function SharedClustersPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-slate-500">Cargando…</div>}>
+    <Suspense fallback={<div className="p-8 text-stone-500">Cargando…</div>}>
       <SharedClustersInner />
     </Suspense>
   );
