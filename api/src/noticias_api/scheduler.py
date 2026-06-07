@@ -2,6 +2,7 @@ import asyncio
 import logging
 from datetime import UTC, date, datetime
 
+import pytz
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from openai import AsyncOpenAI
@@ -13,6 +14,11 @@ from noticias_api.notifiers.digest import send_digest
 from noticias_api.pipeline.runner import PipelineConfig, run_pipeline
 
 logger = logging.getLogger(__name__)
+
+# apscheduler 3.x only honors the timezone when it's set on the CronTrigger
+# itself (a pytz tzinfo) — passing it to AsyncIOScheduler is silently ignored
+# and falls back to UTC. Use this object on every trigger.
+SCHEDULER_TZ = pytz.timezone("America/Argentina/Buenos_Aires")
 
 # Module-level singletons for the polling background task
 _poller_task: asyncio.Task | None = None
@@ -80,14 +86,20 @@ def _schedule_pipeline(trigger: str, settings: Settings) -> None:
 def setup_scheduler(settings: Settings) -> AsyncIOScheduler:
     global _poller_task, _poller_stop, _loop
     _loop = asyncio.get_event_loop()
-    scheduler = AsyncIOScheduler(timezone="America/Argentina/Buenos_Aires")
+    scheduler = AsyncIOScheduler(timezone=SCHEDULER_TZ)
     for hour in settings.cron_hours_list:
         scheduler.add_job(
             _schedule_pipeline,
-            CronTrigger(hour=hour, minute=settings.cron_minute),
+            CronTrigger(hour=hour, minute=settings.cron_minute, timezone=SCHEDULER_TZ),
             args=("cron", settings),
             id=f"daily_briefing_{hour:02d}",
             replace_existing=True,
+            # Run even if the wake-up is late. The host can suspend overnight,
+            # which freezes the event-loop timer; the default 1s grace caused
+            # APScheduler to silently skip the daily briefing. None = run no
+            # matter how late; coalesce collapses multiple missed fires into one.
+            misfire_grace_time=None,
+            coalesce=True,
         )
 
     # Start telegram poller if mode=polling — requires a running event loop.
