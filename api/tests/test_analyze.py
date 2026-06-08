@@ -4,7 +4,38 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from pydantic import ValidationError
 
-from noticias_api.pipeline.analyze import AnalysisResult, analyze_cluster
+from noticias_api.pipeline.analyze import (
+    AnalysisResult,
+    analyze_cluster,
+    select_articles_for_analysis,
+)
+
+
+def _arts(*pairs):
+    # pairs: (slug, body) -> minimal article dicts
+    return [{"slug": s, "title": f"t-{i}", "body": b} for i, (s, b) in enumerate(pairs)]
+
+
+def test_select_caps_total_and_per_source():
+    # 10 articles from one source; defaults cap per-source at 2.
+    arts = _arts(*[("clarin", f"a{i}") for i in range(10)])
+    out = select_articles_for_analysis(arts)
+    assert len(out) == 2
+    assert {a["slug"] for a in out} == {"clarin"}
+
+
+def test_select_preserves_source_diversity_round_robin():
+    # 20 sources, 1 article each, total cap 15 -> 15 distinct sources kept.
+    arts = _arts(*[(f"src{i}", "x") for i in range(20)])
+    out = select_articles_for_analysis(arts)
+    assert len(out) == 15
+    assert len({a["slug"] for a in out}) == 15  # one each, no source starved
+
+
+def test_select_returns_all_when_small():
+    arts = _arts(("a", "1"), ("b", "2"), ("a", "3"))
+    out = select_articles_for_analysis(arts)
+    assert len(out) == 3  # under all caps -> unchanged count
 
 
 def _mock_openai_response(content: str):

@@ -8,7 +8,11 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from noticias_api.db.models import Analysis, Article, Cluster, Run, Source
-from noticias_api.pipeline.analyze import analyze_cluster, prompt_version
+from noticias_api.pipeline.analyze import (
+    analyze_cluster,
+    prompt_version,
+    select_articles_for_analysis,
+)
 from noticias_api.pipeline.cluster import cluster_recent_articles, merge_close_clusters
 from noticias_api.pipeline.embed import build_embedding_input, embed_texts
 from noticias_api.pipeline.extract import extract_content
@@ -51,6 +55,7 @@ class RunStats:
     new_clusters: int = 0
     merged_clusters: int = 0
     analyzed: int = 0
+    analysis_failed: int = 0
     sagas_clusters_assigned: int = 0
     sagas_active: int = 0
     entities_extracted: int = 0
@@ -68,6 +73,7 @@ class RunStats:
             "new_clusters": self.new_clusters,
             "merged_clusters": self.merged_clusters,
             "analyzed": self.analyzed,
+            "analysis_failed": self.analysis_failed,
             "sagas_clusters_assigned": self.sagas_clusters_assigned,
             "sagas_active": self.sagas_active,
             "entities_extracted": self.entities_extracted,
@@ -144,6 +150,7 @@ async def run_pipeline(
 
             analyze_stats = await _analyze_top_clusters(session, client, cfg)
             stats.analyzed = analyze_stats.get("analyzed", 0)
+            stats.analysis_failed = analyze_stats.get("analysis_failed", 0)
 
             if cfg.enable_entity_extraction:
                 ent_stats = await extract_for_top_clusters(
@@ -161,7 +168,11 @@ async def run_pipeline(
             av_stats = await update_author_vectors(session)
             stats.authors_vectorized = av_stats.get("updated", 0)
 
-        final_status = "partial" if stats.errors_per_source else "success"
+        final_status = (
+            "partial"
+            if stats.errors_per_source or stats.analysis_failed
+            else "success"
+        )
         await session.execute(
             update(Run)
             .where(Run.id == run_id)
@@ -261,51 +272,64 @@ async def _analyze_top_clusters(
             await session.scalars(select(Cluster).where(Cluster.is_top.is_(True)))
         ).all()
     analyzed = 0
+    failed = 0
     for cluster in clusters:
-        existing = await session.scalar(
-            select(Analysis).where(Analysis.cluster_id == cluster.id)
-        )
-        if only_cluster_ids is None and existing and existing.generated_at >= cluster.last_seen_at:
-            continue
-        articles = (
-            await session.scalars(
-                select(Article)
-                .where(Article.cluster_id == cluster.id)
-                .order_by(Article.published_at)
+        # Isolate each cluster: a failure (e.g. an oversized prompt hitting the
+        # API rate limit) must not abort the whole run and leave every
+        # subsequent cluster unanalyzed. Commit per cluster so successful work
+        # survives a later failure.
+        try:
+            existing = await session.scalar(
+                select(Analysis).where(Analysis.cluster_id == cluster.id)
             )
-        ).all()
-        payload = []
-        for art in articles:
-            src = await session.get(Source, art.source_id)
-            body = (art.content or art.summary or "")[:3000]
-            payload.append({"slug": src.slug, "title": art.title, "body": body})
-        result = await analyze_cluster(
-            client, articles=payload, model=cfg.analysis_model
-        )
-        if result is None:
-            continue
-        if existing:
-            existing.headline = result.headline
-            existing.common_facts = result.common_facts
-            existing.by_source = {k: v.model_dump() for k, v in result.by_source.items()}
-            existing.omissions = [o.model_dump() for o in result.omissions]
-            existing.divergences = [d.model_dump() for d in result.divergences]
-            existing.model = cfg.analysis_model
-            existing.prompt_version = prompt_version()
-            existing.generated_at = datetime.now(UTC)
-        else:
-            session.add(
-                Analysis(
-                    cluster_id=cluster.id,
-                    headline=result.headline,
-                    common_facts=result.common_facts,
-                    by_source={k: v.model_dump() for k, v in result.by_source.items()},
-                    omissions=[o.model_dump() for o in result.omissions],
-                    divergences=[d.model_dump() for d in result.divergences],
-                    model=cfg.analysis_model,
-                    prompt_version=prompt_version(),
+            if only_cluster_ids is None and existing and existing.generated_at >= cluster.last_seen_at:
+                continue
+            articles = (
+                await session.scalars(
+                    select(Article)
+                    .where(Article.cluster_id == cluster.id)
+                    .order_by(Article.published_at)
                 )
+            ).all()
+            payload = []
+            for art in articles:
+                src = await session.get(Source, art.source_id)
+                body = (art.content or art.summary or "")[:3000]
+                payload.append({"slug": src.slug, "title": art.title, "body": body})
+            payload = select_articles_for_analysis(payload)
+            result = await analyze_cluster(
+                client, articles=payload, model=cfg.analysis_model
             )
-        analyzed += 1
-    await session.commit()
-    return {"analyzed": analyzed}
+            if result is None:
+                failed += 1
+                continue
+            if existing:
+                existing.headline = result.headline
+                existing.common_facts = result.common_facts
+                existing.by_source = {k: v.model_dump() for k, v in result.by_source.items()}
+                existing.omissions = [o.model_dump() for o in result.omissions]
+                existing.divergences = [d.model_dump() for d in result.divergences]
+                existing.model = cfg.analysis_model
+                existing.prompt_version = prompt_version()
+                existing.generated_at = datetime.now(UTC)
+            else:
+                session.add(
+                    Analysis(
+                        cluster_id=cluster.id,
+                        headline=result.headline,
+                        common_facts=result.common_facts,
+                        by_source={k: v.model_dump() for k, v in result.by_source.items()},
+                        omissions=[o.model_dump() for o in result.omissions],
+                        divergences=[d.model_dump() for d in result.divergences],
+                        model=cfg.analysis_model,
+                        prompt_version=prompt_version(),
+                    )
+                )
+            await session.commit()
+            analyzed += 1
+        except Exception:
+            logger.exception("analysis failed for cluster %s (skipping)", cluster.id)
+            await session.rollback()
+            failed += 1
+            continue
+    return {"analyzed": analyzed, "analysis_failed": failed}

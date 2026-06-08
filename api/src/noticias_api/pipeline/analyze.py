@@ -34,6 +34,51 @@ class AnalysisResult(BaseModel):
     divergences: list[Divergence]
 
 
+# Keep the analysis prompt within the model's per-request / TPM budget.
+# Large merged clusters (many sources × articles) otherwise produce 30k+ token
+# prompts that the API rejects with a 429 "request too large".
+MAX_ARTICLES_PER_ANALYSIS = 15
+MAX_ARTICLES_PER_SOURCE = 2
+
+
+def select_articles_for_analysis(
+    articles: list[dict[str, Any]],
+    *,
+    max_total: int = MAX_ARTICLES_PER_ANALYSIS,
+    max_per_source: int = MAX_ARTICLES_PER_SOURCE,
+) -> list[dict[str, Any]]:
+    """Bound prompt size while keeping source diversity.
+
+    Round-robins across sources so every diario is represented before any
+    source contributes a second article, capping per-source and overall.
+    Preserves the input order of sources and of articles within a source.
+    """
+    by_source: dict[str, list[dict[str, Any]]] = {}
+    order: list[str] = []
+    for a in articles:
+        slug = a["slug"]
+        if slug not in by_source:
+            by_source[slug] = []
+            order.append(slug)
+        by_source[slug].append(a)
+
+    selected: list[dict[str, Any]] = []
+    round_i = 0
+    while len(selected) < max_total:
+        progressed = False
+        for slug in order:
+            bucket = by_source[slug]
+            if round_i < min(len(bucket), max_per_source):
+                selected.append(bucket[round_i])
+                progressed = True
+                if len(selected) >= max_total:
+                    break
+        if not progressed:
+            break
+        round_i += 1
+    return selected
+
+
 async def _request(client: AsyncOpenAI, model: str, prompt: str, *, temperature: float) -> str:
     response = await client.chat.completions.create(
         model=model,
